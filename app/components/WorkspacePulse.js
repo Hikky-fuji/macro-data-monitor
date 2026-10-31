@@ -315,7 +315,7 @@ function usCards(payload) {
   const hasSource = key => Object.prototype.hasOwnProperty.call(payload, key)
   const sourceLoading = key => !hasSource(key)
   const sourceFailed = key => hasSource(key) && payload[key] === null
-  const { cpi, employment, consumption, manufacturing, macro, rates } = payload
+  const { cpi, employment, consumption, manufacturing, macro } = payload
   const headlineCpi = yoyFromIndex(cpi?.series?.headline?.observations)
   const coreCpi = yoyFromIndex(cpi?.series?.core?.observations)
   const corePce = yoyFromIndex(consumption?.series?.corePce?.observations)
@@ -432,23 +432,6 @@ function usCards(payload) {
       loading: sourceLoading('macro'),
       unavailable: sourceFailed('macro') || (hasSource('macro') && !finite(fedFunds?.value)),
     }),
-    card({
-      label: 'Rates & Conditions',
-      href: '/us/rates',
-      mainLabel: '10Y Treasury',
-      value: fixed(rates?.latest?.tenYear?.value, 2, '%'),
-      period: rates?.latest?.tenYear?.date,
-      toneName: 'neutral',
-      details: [
-        detail('2s10s curve', signed(rates?.latest?.spread2s10s?.value * 100, 0, 'bp')),
-        detail('Chicago Fed NFCI', fixed(rates?.latest?.nfci?.value, 2), tone(rates?.latest?.nfci?.value, true)),
-      ],
-      source: 'Federal Reserve Â· Treasury Â· FRED',
-      series: seriesValues(rates?.series?.treasury10y?.observations),
-      momentumKind: 'policy',
-      loading: sourceLoading('rates'),
-      unavailable: sourceFailed('rates') || (hasSource('rates') && !finite(rates?.latest?.tenYear?.value)),
-    }),
   ]
 }
 
@@ -476,7 +459,7 @@ async function fetchJson(path, parentSignal, timeoutMs = 12000) {
   }
 }
 
-const PULSE_CACHE_VERSION = 6
+const PULSE_CACHE_VERSION = 7
 
 function readPulseCache(countryCode, maxAge) {
   try {
@@ -503,7 +486,7 @@ function writePulseCache(countryCode, payload) {
 
 // `dashboards` maps a card href to { title, subtitle, badge } for the dashboard it opens.
 export default function WorkspacePulse({ countryCode, title = 'Core indicators Â· current pulse', dashboards = {} }) {
-  const sourceTotal = countryCode === 'JP' ? 4 : 6
+  const sourceTotal = countryCode === 'JP' ? 4 : 5
   const [cards, setCards] = useState(() => countryCode === 'JP' ? japanCards({}) : usCards({}))
   const [progress, setProgress] = useState({ completed: 0, total: sourceTotal })
   const [cacheMode, setCacheMode] = useState('none')
@@ -529,7 +512,6 @@ export default function WorkspacePulse({ countryCode, title = 'Core indicators Â
             consumption: '/api/us-consumption',
             manufacturing: '/api/us-manufacturing',
             macro: '/api/us-macro',
-            rates: '/api/us-rates',
           },
           build: usCards,
         }
@@ -641,7 +623,7 @@ export default function WorkspacePulse({ countryCode, title = 'Core indicators Â
         </div>
         <small>{statusText}</small>
       </header>
-      <div className={`workspace-pulse__grid${cards?.length % 3 === 0 && cards.length > 4 ? ' is-three-col' : ''}${cards?.length === 4 ? ' is-four' : ''}`}>
+      <div className={`workspace-pulse__grid${cards?.length === 4 ? ' is-four' : ''}${cards?.length === 5 ? ' is-five' : ''}`}>
         {(cards || []).map(item => item.loading ? (
           <div className="workspace-pulse__item is-loading" key={item.label}>
             <div className="workspace-pulse__topline">

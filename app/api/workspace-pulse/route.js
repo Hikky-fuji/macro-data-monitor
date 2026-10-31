@@ -16,13 +16,11 @@ const SOURCES = {
     consumption: '/api/us-consumption',
     manufacturing: '/api/us-manufacturing',
     macro: '/api/us-macro',
-    rates: '/api/us-rates',
   },
 }
 
 const SOURCE_TIMEOUTS = {
   bojPolicy: 20000,
-  rates: 15000,
 }
 
 async function fetchSource(origin, key, path, timeoutMs = 8500) {

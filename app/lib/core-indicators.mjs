@@ -1,9 +1,9 @@
-// Core monitoring set chosen by the owner (2026-10-30). Everything else stays
+// Core monitoring set chosen by the owner (2026-10-30; US rates moved to Archive 2026-10-31). Everything else stays
 // routed and monitored, but is presented as Archive and does not gate CI.
 
 export const CORE_PAGES = {
   JP: ['/cpi', '/tokyo-cpi', '/wages', '/boj-policy'],
-  US: ['/us/cpi', '/us/employment', '/us/consumption', '/us/manufacturing', '/us/rates', '/us-macro'],
+  US: ['/us/cpi', '/us/employment', '/us/consumption', '/us/manufacturing', '/us-macro'],
 }
 
 // APIs the core pages read, including inputs joined into the BOJ Policy Monitor.
@@ -18,7 +18,6 @@ export const CORE_APIS = [
   '/api/us-employment',
   '/api/us-consumption',
   '/api/us-manufacturing',
-  '/api/us-rates',
   '/api/us-macro',
 ]
 

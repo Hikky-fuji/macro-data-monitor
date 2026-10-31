@@ -1423,9 +1423,24 @@ button:focus-visible {
   background: #3f474c;
 }
 
-@media (min-width: 1181px) {
-  .workspace-pulse__grid.is-three-col {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+/* Five cards: three over two on wide screens, the last one full width in two columns. */
+@media (min-width: 981px) {
+  .workspace-pulse__grid.is-five {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .workspace-pulse__grid.is-five > * {
+    grid-column: span 2;
+  }
+
+  .workspace-pulse__grid.is-five > :nth-child(n + 4) {
+    grid-column: span 3;
+  }
+}
+
+@media (max-width: 980px) and (min-width: 761px) {
+  .workspace-pulse__grid.is-five > :last-child {
+    grid-column: 1 / -1;
   }
 }
 
