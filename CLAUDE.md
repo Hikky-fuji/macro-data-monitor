@@ -240,7 +240,7 @@ All endpoints are GET Route Handlers. A JSON body containing `{ "error": ... }` 
 
 ## 6. Primary dashboards
 
-Core set decided by the owner on 2026-10-30. The single source of truth is
+Core set decided by the owner on 2026-10-30 (US rates moved to Archive on 2026-10-31). The single source of truth is
 `app/lib/core-indicators.mjs`; all other dashboards are Archive (routed and
 monitored, collapsed on the workspaces, warn-only in the production smoke test).
 
@@ -256,8 +256,8 @@ US_core:               # overnight releases in Japan time
   - "/us/employment"
   - "/us/consumption"  # PCE
   - "/us/manufacturing"
-  - "/us/rates"
   - "/us-macro"        # Fed policy incl. Taylor-rule monitor
+  # /us/rates moved to Archive on 2026-10-31 (owner does not track the curve daily)
 
 overview: "/ — single page for both countries, US section first (#united-states, #japan); /us redirects to /#united-states"
 

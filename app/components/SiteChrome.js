@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { href: '/', label: 'Overview', match: path => path === '/' },
   { href: '/us/cpi', label: 'US Prices', match: path => ['/us/cpi', '/us/ppi', '/us/consumption'].includes(path) },
   { href: '/us/employment', label: 'US Jobs', match: path => ['/us/employment', '/us/initial-claims', '/us/jolts'].includes(path) },
-  { href: '/us-macro', label: 'Fed & Rates', match: path => path === '/us-macro' || path === '/us/rates' },
+  { href: '/us-macro', label: 'Fed Policy', match: path => path === '/us-macro' || path === '/us/rates' },
   { href: '/cpi', label: 'Japan Prices', match: path => ['/cpi', '/tokyo-cpi', '/ppi'].includes(path) },
   { href: '/boj-policy', label: 'BOJ & Wages', match: path => path === '/boj-policy' || path === '/wages' },
   { href: '/status', label: 'Data Status', match: path => path === '/status' },
@@ -239,7 +239,7 @@ export function SiteHeader() {
           <span className="terminal-statusbar__sources">Official data sources</span>
           <span>United States · FRED / BLS / BEA</span>
           <span>Japan · e-Stat / BOJ</span>
-          <span>Core set · 6 US / 4 Japan</span>
+          <span>Core set · 5 US / 4 Japan</span>
         </div>
       </div>
       {significance ? (
