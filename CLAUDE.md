@@ -259,6 +259,8 @@ US_core:               # overnight releases in Japan time
   - "/us/rates"
   - "/us-macro"        # Fed policy incl. Taylor-rule monitor
 
+overview: "/ — single page for both countries, US section first (#united-states, #japan); /us redirects to /#united-states"
+
 operations:
   - "/status"
 

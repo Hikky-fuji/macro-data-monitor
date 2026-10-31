@@ -298,7 +298,7 @@ export default function USMacroDashboard() {
             Growth, labor and policy-rule diagnostics · Sources: BEA, BLS, CBO and Federal Reserve via FRED
           </div>
         </div>
-        <a href="/us" style={{ fontSize: '12px', color: '#c7cdd1', textDecoration: 'none' }}>← US workspace</a>
+        <a href="/#united-states" style={{ fontSize: '12px', color: '#c7cdd1', textDecoration: 'none' }}>← US workspace</a>
       </div>
 
       {/* ── Section 1: Fed Watch ── */}

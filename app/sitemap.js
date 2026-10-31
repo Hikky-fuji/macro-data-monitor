@@ -2,7 +2,6 @@ import { SITE_URL } from './lib/site.mjs'
 
 const routes = [
   { path: '/', priority: 1, changeFrequency: 'daily' },
-  { path: '/us', priority: 1, changeFrequency: 'daily' },
   { path: '/status', priority: 0.8, changeFrequency: 'daily' },
   { path: '/about', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/changelog', priority: 0.5, changeFrequency: 'monthly' },

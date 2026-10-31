@@ -104,7 +104,7 @@ function ReleaseRows({ events, limit, emptyMessage = 'Loading official release s
 }
 
 export default function WorkspaceOperations({ countryCode, expanded = false }) {
-  const countries = countryCode === 'ALL' ? ['JP', 'US'] : [countryCode]
+  const countries = countryCode === 'ALL' ? ['US', 'JP'] : [countryCode]
   const [healthByCountry, setHealthByCountry] = useState({})
   const [calendar, setCalendar] = useState(null)
   const [calendarCountry, setCalendarCountry] = useState(countryCode === 'ALL' ? 'ALL' : countryCode)
@@ -114,7 +114,7 @@ export default function WorkspaceOperations({ countryCode, expanded = false }) {
   useEffect(() => {
     const controller = new AbortController()
     let active = true
-    const requestCountries = countryCode === 'ALL' ? ['JP', 'US'] : [countryCode]
+    const requestCountries = countryCode === 'ALL' ? ['US', 'JP'] : [countryCode]
 
     fetchOperationsJson('/api/release-calendar', controller.signal)
       .then(payload => {
@@ -275,7 +275,6 @@ export default function WorkspaceOperations({ countryCode, expanded = false }) {
     )
   }
 
-  const health = healthByCountry[countryCode]
   return (
     <section className="workspace-operations" aria-label={`${countryCode} data operations`}>
       <header className="workspace-operations__header">
@@ -291,7 +290,12 @@ export default function WorkspaceOperations({ countryCode, expanded = false }) {
             <span>FEED HEALTH</span>
             <b>AUTO · 15M</b>
           </div>
-          <HealthSummary health={health} />
+          {countries.map(country => (
+            <div className="workspace-operations__country" key={country}>
+              {countries.length > 1 ? <small>{country === 'US' ? 'United States' : 'Japan'}</small> : null}
+              <HealthSummary health={healthByCountry[country]} />
+            </div>
+          ))}
         </article>
         <article>
           <div className="workspace-operations__topline">
@@ -300,7 +304,7 @@ export default function WorkspaceOperations({ countryCode, expanded = false }) {
           </div>
           <ReleaseRows
             events={events}
-            limit={3}
+            limit={countries.length > 1 ? 4 : 3}
             emptyMessage={calendar?.unavailable ? 'Release schedule is temporarily unavailable.' : undefined}
           />
         </article>

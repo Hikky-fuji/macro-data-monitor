@@ -168,7 +168,7 @@ export default function HouseholdCreditDashboard() {
       <div className={styles.shell}>
         <DashboardFreshness data={payload} source="NY Fed Consumer Credit Panel / Equifax" />
         <nav className={styles.topbar}>
-          <Link href="/us">← US Macro Dashboard</Link>
+          <Link href="/#united-states">← US Macro Dashboard</Link>
           <span>HOUSEHOLD CREDIT / QUARTERLY</span>
         </nav>
 

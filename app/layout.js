@@ -33,7 +33,7 @@ const structuredData = {
         {
           '@type': 'Dataset',
           name: 'United States macroeconomic indicators',
-          url: `${SITE_URL}/us`,
+          url: `${SITE_URL}/#united-states`,
           temporalCoverage: '2015/..',
           spatialCoverage: 'United States',
           creator: { '@type': 'Organization', name: 'Macro Data Monitor' },

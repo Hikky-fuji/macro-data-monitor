@@ -7,6 +7,8 @@ const LEGACY_HOST = 'japanpulse.vercel.app'
 const nextConfig = {
   async redirects() {
     return [
+      // The US workspace merged into the overview page.
+      { source: '/us', destination: '/#united-states', permanent: true },
       {
         source: '/:path*',
         has: [{ type: 'host', value: LEGACY_HOST }],
@@ -18,4 +20,3 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
-module.exports.CANONICAL_ORIGIN = CANONICAL_ORIGIN

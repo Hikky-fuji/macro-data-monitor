@@ -144,11 +144,10 @@ test('retail and housing dashboards preserve official definitions and comparison
   assert.match(retailPage, /latest common MRTS month/i)
 })
 
-test('Japan and US navigators share a compact macro taxonomy and ordering', () => {
-  const japanGroups = [...read('app/page.js').matchAll(/group:\s*\{\s*en:\s*'([^']+)'/g)]
-    .map(match => match[1])
-  const usGroups = [...read('app/us/page.js').matchAll(/group:\s*'([^']+)'/g)]
-    .map(match => match[1])
+test('overview catalog shares one taxonomy and lists every core dashboard', async () => {
+  const { JAPAN_INDICATORS, US_INDICATORS } = await import('../app/lib/workspace-catalog.js')
+  const { CORE_PAGES } = await import('../app/lib/core-indicators.mjs')
+  const groupName = group => (typeof group.group === 'object' ? group.group.en : group.group)
   const commonGroups = [
     'Prices',
     'Growth & Business Activity',
@@ -158,8 +157,23 @@ test('Japan and US navigators share a compact macro taxonomy and ordering', () =
     'Policy & Financial Conditions',
   ]
 
-  assert.deepEqual(usGroups, commonGroups)
-  assert.deepEqual(japanGroups, [...commonGroups, 'External Sector'])
+  assert.deepEqual(US_INDICATORS.map(groupName), commonGroups)
+  assert.deepEqual(JAPAN_INDICATORS.map(groupName), [...commonGroups, 'External Sector'])
+
+  const catalogPaths = [...US_INDICATORS, ...JAPAN_INDICATORS]
+    .flatMap(group => group.items.map(item => item.href.split('#')[0]))
+  for (const pathname of [...CORE_PAGES.US, ...CORE_PAGES.JP]) {
+    assert.ok(catalogPaths.includes(pathname), `core page ${pathname} is missing from the overview catalog`)
+  }
+
+  const overview = read('app/components/OverviewWorkspace.js')
+  assert.ok(overview.indexOf("code: 'US'") < overview.indexOf("code: 'JP'"), 'US must render before Japan')
+})
+
+test('the former US workspace redirects to the overview section', async () => {
+  const nextConfig = (await import('../next.config.js')).default
+  const redirects = await nextConfig.redirects()
+  assert.ok(redirects.some(rule => rule.source === '/us' && rule.destination === '/#united-states' && rule.permanent))
 })
 
 test('US CPI rent-of-shelter series matches its published relative-importance weight', () => {
@@ -236,8 +250,7 @@ test('canonical origin is defined once and matches the production smoke target',
   assert.match(SITE_URL, /^https:\/\/[^/]+$/)
   assert.ok(pkg.scripts['smoke:production'].includes(`BASE_URL=${SITE_URL} `), 'smoke:production must target SITE_URL')
   const nextConfig = (await import('../next.config.js')).default
-  assert.equal(nextConfig.CANONICAL_ORIGIN, SITE_URL, 'next.config.js legacy-host redirect must target SITE_URL')
-  const [legacy] = await nextConfig.redirects()
+  const legacy = (await nextConfig.redirects()).find(rule => rule.has?.[0]?.type === 'host')
   assert.equal(legacy.destination, `${SITE_URL}/:path*`)
   assert.equal(legacy.permanent, true)
   for (const file of walk(appRoot).filter(path => /\.(m?js)$/.test(path) && !path.endsWith('site.mjs'))) {

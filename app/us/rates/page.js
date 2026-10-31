@@ -272,7 +272,7 @@ export default function UsRatesDashboard() {
       <div className={styles.shell}>
         <DashboardFreshness data={payload} source="Federal Reserve · Treasury · FRED" />
         <div className={styles.topbar}>
-          <Link href="/us">← US workspace</Link>
+          <Link href="/#united-states">← US workspace</Link>
           <span>Federal Reserve / U.S. Treasury / Chicago Fed via FRED</span>
         </div>
 

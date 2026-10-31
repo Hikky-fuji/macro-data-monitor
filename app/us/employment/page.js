@@ -426,13 +426,13 @@ export default function USEmploymentPage() {
           <div style={{ fontSize: 12, color: '#aaa', marginBottom: 4 }}>
             <a href="/" style={{ color: '#aaa', textDecoration: 'none' }}>🇯🇵 Japan</a>
             {' → '}
-            <a href="/us" style={{ color: '#aaa', textDecoration: 'none' }}>🇺🇸 US</a>
+            <a href="/#united-states" style={{ color: '#aaa', textDecoration: 'none' }}>🇺🇸 US</a>
             {' → Employment'}
           </div>
           <h1 style={{ fontSize: '18px', fontWeight: '600', color: '#111', margin: 0 }}>US Employment Dashboard</h1>
           <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px' }}>BLS via FRED · SA · Monthly</div>
         </div>
-        <a href="/us" style={{ fontSize: '12px', color: '#555', textDecoration: 'none' }}>← US Home</a>
+        <a href="/#united-states" style={{ fontSize: '12px', color: '#555', textDecoration: 'none' }}>← US Home</a>
       </div>
 
       {/* ── Section 1: Headline KPIs ── */}

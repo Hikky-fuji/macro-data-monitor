@@ -177,7 +177,7 @@ export default function RetailSalesDashboard() {
     <main className={styles.page}>
       <div className={styles.shell}>
         <DashboardFreshness data={payload} source="Census · FRED" />
-        <nav className={styles.topbar}><Link href="/us">← US Macro Dashboard</Link><span>CONSUMPTION / RETAIL DEMAND / MONTHLY</span></nav>
+        <nav className={styles.topbar}><Link href="/#united-states">← US Macro Dashboard</Link><span>CONSUMPTION / RETAIL DEMAND / MONTHLY</span></nav>
         <header className={styles.hero}>
           <div className={styles.eyebrow}>US / RETAIL SALES</div>
           <h1>Retail Demand Monitor</h1>

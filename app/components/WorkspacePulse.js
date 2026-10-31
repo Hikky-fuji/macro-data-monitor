@@ -501,7 +501,7 @@ function writePulseCache(countryCode, payload) {
   }
 }
 
-export default function WorkspacePulse({ countryCode }) {
+export default function WorkspacePulse({ countryCode, title = 'Core indicators · current pulse' }) {
   const sourceTotal = countryCode === 'JP' ? 4 : 6
   const [cards, setCards] = useState(() => countryCode === 'JP' ? japanCards({}) : usCards({}))
   const [progress, setProgress] = useState({ completed: 0, total: sourceTotal })
@@ -636,11 +636,11 @@ export default function WorkspacePulse({ countryCode }) {
       <header className="workspace-pulse__header">
         <div>
           <span>Macro at a glance</span>
-          <strong>Core indicators · current pulse</strong>
+          <strong>{title}</strong>
         </div>
         <small>{statusText}</small>
       </header>
-      <div className={`workspace-pulse__grid${cards?.length % 3 === 0 && cards.length > 4 ? ' is-three-col' : ''}`}>
+      <div className={`workspace-pulse__grid${cards?.length % 3 === 0 && cards.length > 4 ? ' is-three-col' : ''}${cards?.length === 4 ? ' is-four' : ''}`}>
         {(cards || []).map(item => item.loading ? (
           <div className="workspace-pulse__item is-loading" key={item.label}>
             <div className="workspace-pulse__topline">
