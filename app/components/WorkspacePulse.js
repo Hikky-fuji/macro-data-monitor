@@ -476,8 +476,10 @@ function usCards(payload) {
   const sourceLoading = key => !hasSource(key)
   const sourceFailed = key => hasSource(key) && payload[key] === null
   const { cpi, employment, consumption, manufacturing, macro } = payload
-  const headlineCpi = yoyFromIndex(cpi?.series?.headline?.observations)
-  const coreCpi = yoyFromIndex(cpi?.series?.core?.observations)
+  // BLS publishes CPI 12-month changes from unadjusted indices.
+  const nsaOrSa = item => item?.nsa?.observations?.some(point => finite(point.value)) ? item.nsa.observations : item?.observations
+  const headlineCpi = yoyFromIndex(nsaOrSa(cpi?.series?.headline))
+  const coreCpi = yoyFromIndex(nsaOrSa(cpi?.series?.core))
   const corePce = yoyFromIndex(consumption?.series?.corePce?.observations)
   const realPce = consumption?.series?.realPce?.observations?.filter(item => finite(item.value)) || []
   const saving = last(consumption?.series?.savingRate?.observations?.filter(item => finite(item.value)))
@@ -520,7 +522,7 @@ function usCards(payload) {
         detail('Core PCE', fixed(corePce.value, 1, '%')),
       ],
       source: 'BLS · FRED',
-      series: yoySeries(cpi?.series?.headline?.observations),
+      series: yoySeries(nsaOrSa(cpi?.series?.headline)),
       baseline: 2,
       momentumKind: 'inflation',
       loading: sourceLoading('cpi'),
@@ -662,7 +664,7 @@ async function fetchJson(path, parentSignal, timeoutMs = 12000) {
   }
 }
 
-const PULSE_CACHE_VERSION = 8
+const PULSE_CACHE_VERSION = 9
 
 function readPulseCache(countryCode, maxAge) {
   try {

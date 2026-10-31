@@ -21,6 +21,8 @@ const SOURCES = {
 
 const SOURCE_TIMEOUTS = {
   bojPolicy: 20000,
+  // US CPI loads ~60 FRED series on a cold cache (the key is shared with JP CPI).
+  cpi: 20000,
 }
 
 async function fetchSource(origin, key, path, timeoutMs = 8500) {
