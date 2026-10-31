@@ -107,18 +107,15 @@ function CountrySection({ country, core }) {
         <small>{country.timing}<br />{core.length} core dashboards</small>
       </header>
 
-      <WorkspacePulse countryCode={country.code} title={`${country.name} · current pulse`} />
-
-      <div className={`overview-links overview-links--${core.length % 3 === 0 ? 3 : 4}`} aria-label={`${country.name} core dashboards`}>
-        {core.map(item => (
-          <Link className="overview-link" href={item.href} key={item.href}>
-            <span>{en(item.badge)}</span>
-            <strong>{en(item.title)}</strong>
-            <small>{en(item.subtitle)}</small>
-            <em>{sourceForPath(item.href)} <b aria-hidden="true">→</b></em>
-          </Link>
-        ))}
-      </div>
+      <WorkspacePulse
+        countryCode={country.code}
+        title={`${country.name} · current pulse`}
+        dashboards={Object.fromEntries(core.map(item => [item.href, {
+          title: en(item.title),
+          subtitle: en(item.subtitle),
+          badge: en(item.badge).split(' / ')[0],
+        }]))}
+      />
     </section>
   )
 }

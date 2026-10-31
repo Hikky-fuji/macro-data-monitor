@@ -501,7 +501,8 @@ function writePulseCache(countryCode, payload) {
   }
 }
 
-export default function WorkspacePulse({ countryCode, title = 'Core indicators · current pulse' }) {
+// `dashboards` maps a card href to { title, subtitle, badge } for the dashboard it opens.
+export default function WorkspacePulse({ countryCode, title = 'Core indicators · current pulse', dashboards = {} }) {
   const sourceTotal = countryCode === 'JP' ? 4 : 6
   const [cards, setCards] = useState(() => countryCode === 'JP' ? japanCards({}) : usCards({}))
   const [progress, setProgress] = useState({ completed: 0, total: sourceTotal })
@@ -664,7 +665,7 @@ export default function WorkspacePulse({ countryCode, title = 'Core indicators �
           >
             <div className="workspace-pulse__topline">
               <span>{item.label}</span>
-              <b>Open →</b>
+              <b>{dashboards[item.href]?.badge ? `${dashboards[item.href].badge} · ` : ''}Open →</b>
             </div>
             <div className="workspace-pulse__main-label">{item.mainLabel}</div>
             <strong>{item.unavailable ? '—' : item.value}</strong>
@@ -689,6 +690,12 @@ export default function WorkspacePulse({ countryCode, title = 'Core indicators �
                 </div>
               ))}
             </div>
+            {dashboards[item.href] ? (
+              <div className="workspace-pulse__dashboard">
+                <b>{dashboards[item.href].title}</b>
+                <span>{dashboards[item.href].subtitle}</span>
+              </div>
+            ) : null}
             <footer>
               <span>{item.source}</span>
               <b className={item.unavailable ? 'is-failed' : item.mode.startsWith('MIXED') ? 'is-mixed' : ''}>
