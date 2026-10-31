@@ -624,7 +624,7 @@ export default function JapanCpiDashboard({ variant = 'national' }) {
                 <p className={styles.panelSub}>Year-over-year change for the latest month both areas have published</p>
                 {model.comparisonData ? (
                   <div className={styles.contributionChart}>
-                    <Bar data={model.comparisonData} options={{ ...chartOptions(), indexAxis: 'y', scales: { x: { grid: { color: '#495157' }, ticks: { color: '#bac1c6', font: { size: 9 }, callback: value => `${value}%` } }, y: { grid: { display: false }, ticks: { color: '#bac1c6', font: { size: 9 } } } } }} />
+                    <Bar data={model.comparisonData} options={{ ...chartOptions(), indexAxis: 'y', interaction: { mode: 'index', axis: 'y', intersect: false }, scales: { x: { grid: { color: '#495157' }, ticks: { color: '#bac1c6', font: { size: 9 }, callback: value => `${value}%` } }, y: { grid: { display: false }, ticks: { color: '#bac1c6', font: { size: 9 } } } } }} />
                   </div>
                 ) : <p className={styles.panelSub}>National comparison is temporarily unavailable.</p>}
               </div>
