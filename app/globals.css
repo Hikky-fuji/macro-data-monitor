@@ -799,37 +799,6 @@ button:focus-visible {
   filter: saturate(.88) brightness(1.12);
 }
 
-.jp-chart-export {
-  display: flex;
-  min-height: 28px;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  margin: -2px 0 8px;
-  font: 650 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.jp-chart-export button {
-  padding: 5px 8px;
-  border: 1px solid var(--jp-line-strong);
-  border-radius: 4px;
-  background: var(--jp-surface);
-  color: var(--jp-muted);
-  cursor: pointer;
-  font: inherit;
-}
-
-.jp-chart-export button:hover,
-.jp-chart-export button:focus-visible {
-  border-color: var(--jp-blue);
-  color: var(--jp-text);
-}
-
-.jp-chart-export [data-chart-export-status] {
-  min-width: 52px;
-  color: var(--jp-blue);
-}
-
 .dashboard-page [style*="background: rgb(248, 248, 246)"],
 .dashboard-page [style*="background:#f8f8f6"],
 .dashboard-page [style*="background: #f8f8f6"] {

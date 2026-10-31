@@ -205,13 +205,12 @@ test('Japan CPI routes use the current official base and matching category defin
   assert.match(page, /2025 Base/)
 })
 
-test('Chart.js dashboards expose image copy and PNG download controls', () => {
+// Copy/Download buttons were removed on 2026-10-31: unused, and the toolbar
+// they injected into fixed-height chart boxes pushed canvases over legends.
+test('Chart.js theme does not inject image export controls into chart boxes', () => {
   const theme = read('app/components/ChartTheme.js')
-  assert.match(theme, /navigator\.clipboard\?\.write/)
-  assert.match(theme, /ClipboardItem/)
-  assert.match(theme, /'image\/png': blobPromise/)
-  assert.match(theme, /Copy image/)
-  assert.match(theme, /Download PNG/)
+  assert.doesNotMatch(theme, /insertBefore|Copy image|Download PNG/)
+  assert.doesNotMatch(read('app/globals.css'), /jp-chart-export/)
 })
 
 test('household credit dashboard uses NY Fed flow definitions without re-annualizing', () => {
