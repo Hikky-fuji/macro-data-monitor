@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { momentumSignal, movingAverage, yoyMomentum } from '../app/lib/japan-cpi-momentum.mjs'
+import { momentumSignal, movingAverage, saMomentum, yoyMomentum } from '../app/lib/japan-cpi-momentum.mjs'
 
 test('three-month moving average preserves dates and smooths year-over-year rates', () => {
   const result = movingAverage([
@@ -37,4 +37,22 @@ test('momentum signal distinguishes acceleration, cooling and noise', () => {
   assert.equal(momentumSignal(-0.2), 'Cooling')
   assert.equal(momentumSignal(0.02), 'Stable')
   assert.equal(momentumSignal(null), 'Unavailable')
+})
+
+test('SA momentum uses the official M/M and annualizes the official SA index', () => {
+  const index = ['2026/03', '2026/04', '2026/05', '2026/06', '2026/07', '2026/08', '2026/09']
+    .map((date, i) => ({ date, value: [100, 100.2, 100.4, 100.5, 100.8, 101.0, 101.3][i] }))
+  const result = saMomentum(index, [{ date: '2026/09', value: 0.3 }])
+
+  assert.equal(result.date, '2026/09')
+  assert.equal(result.mom, 0.3)
+  assert.ok(Math.abs(result.annualized3m - ((101.3 / 100.5) ** 4 - 1) * 100) < 1e-9)
+  assert.ok(Math.abs(result.annualized6m - ((101.3 / 100) ** 2 - 1) * 100) < 1e-9)
+})
+
+test('SA momentum leaves horizons blank when the base month is missing', () => {
+  const result = saMomentum([{ date: '2026/08', value: 101 }, { date: '2026/09', value: 101.3 }], [])
+  assert.equal(result.mom, null)
+  assert.equal(result.annualized3m, null)
+  assert.equal(result.annualized6m, null)
 })

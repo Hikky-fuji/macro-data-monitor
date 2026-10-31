@@ -286,10 +286,10 @@ export default function USCpiDashboard() {
     const annualizedMonthly = rate => valid(rate) ? ((1 + rate / 100) ** 12 - 1) * 100 : null
     const underlyingRows = [
       { key: 'core', label: 'Core CPI', publisher: 'BLS', basis: 'Reference · Y/Y from NSA', stats: { ...coreStats, annualized1m: annualizedMonthly(coreStats.mom) } },
-      { key: 'median', label: underlying.median?.label, publisher: underlying.median?.publisher, basis: 'Rates derived from Cleveland Fed index', sourceUrl: underlying.median?.sourceUrl, stats: indexRates(underlying.median?.observations) },
-      { key: 'trimmedMean', label: underlying.trimmedMean?.label, publisher: underlying.trimmedMean?.publisher, basis: 'Rates derived from Cleveland Fed index', sourceUrl: underlying.trimmedMean?.sourceUrl, stats: indexRates(underlying.trimmedMean?.observations) },
+      { key: 'median', label: underlying.median?.label, publisher: underlying.median?.publisher, basis: 'Derived from index', sourceUrl: underlying.median?.sourceUrl, stats: indexRates(underlying.median?.observations) },
+      { key: 'trimmedMean', label: underlying.trimmedMean?.label, publisher: underlying.trimmedMean?.publisher, basis: 'Derived from index', sourceUrl: underlying.trimmedMean?.sourceUrl, stats: indexRates(underlying.trimmedMean?.observations) },
       { key: 'stickyCore', label: underlying.stickyCoreYoy?.label, publisher: underlying.stickyCoreYoy?.publisher, basis: 'Published rates', sourceUrl: underlying.stickyCoreYoy?.sourceUrl, stats: atlanta('stickyCoreYoy', 'stickyCore3m') },
-      { key: 'flexible', label: underlying.flexibleYoy?.label, publisher: underlying.flexibleYoy?.publisher, basis: 'Published rates · includes food and energy', sourceUrl: underlying.flexibleYoy?.sourceUrl, stats: atlanta('flexibleYoy', 'flexible3m') },
+      { key: 'flexible', label: underlying.flexibleYoy?.label, publisher: underlying.flexibleYoy?.publisher, basis: 'Published rates · incl. food & energy', sourceUrl: underlying.flexibleYoy?.sourceUrl, stats: atlanta('flexibleYoy', 'flexible3m') },
     ].filter(row => row.label)
     const underlyingDates = trendDates
     const indexYoy = key => yoyPath({ observations: underlying[key]?.observations }, underlyingDates)

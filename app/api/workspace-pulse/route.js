@@ -21,7 +21,7 @@ const SOURCES = {
 
 const SOURCE_TIMEOUTS = {
   bojPolicy: 20000,
-  // US CPI loads ~60 FRED series on a cold cache (the key is shared with JP CPI).
+  // Both CPI routes (key shared by JP and US) load ~60 series on a cold cache.
   cpi: 20000,
 }
 

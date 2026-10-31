@@ -751,6 +751,11 @@
   white-space: nowrap;
 }
 
+/* Let the label column wrap its source line instead of forcing a scrollbar. */
+.compactTable td:first-child {
+  white-space: normal;
+}
+
 .categoryTable .roleBadge {
   white-space: normal;
   line-height: 1.3;
@@ -891,11 +896,13 @@
 }
 
 /* Below this width a half-width panel cannot fit the category table. */
-@media (max-width: 1180px) {
+@media (max-width: 1280px) {
   .compositionGrid {
     grid-template-columns: 1fr;
   }
+}
 
+@media (max-width: 1180px) {
   .kpiGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

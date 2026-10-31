@@ -64,7 +64,7 @@ principles:
 
 - US CPI `3M ann.` is a three-month annualized index change, not a three-month moving average:
   `((index_t / index_t-3) ** 4 - 1) * 100`.
-- Japan detailed CPI uses official year-over-year rates and NSA monthly detail. Its `3MMA` is the average of the latest three official YoY rates. Do not manufacture a seasonally adjusted annualized rate from detailed NSA series.
+- Japan detailed CPI uses official year-over-year rates and NSA monthly detail. Its `3MMA` is the average of the latest three official YoY rates. Do not manufacture a seasonally adjusted annualized rate from detailed NSA series. The Japan CPI page's M/M SA and 3M/6M ann. come only from MIC's official SA aggregates (headline 0901, core 0902, core-core 0906, services 0924). MIC rounds the SA index to 0.1, which adds roughly ±0.4pp of noise to the annualized rates.
 - US CPI momentum (M/M, 3M/6M ann.) uses SA indices; Y/Y uses NSA indices, as BLS publishes 12-month changes. SA Y/Y is only a labeled fallback (`yoyBasis: 'SA'`).
 - US CPI `Supercore` is core services less rent of shelter, a derived weighted residual using fixed December relative-importance weights. Cleveland Fed median/trimmed-mean rates are derived from their indices; Atlanta Fed sticky/flexible values are published rates, and missing horizons stay blank.
 - The US CPI "Import-intensive goods" group is an analyst grouping, not a BLS aggregate. Its components are never summed, and it makes no tariff pass-through claim.
