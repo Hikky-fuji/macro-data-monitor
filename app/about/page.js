@@ -145,7 +145,7 @@ export default function AboutPage() {
             figures against the linked official release before making decisions.
           </p>
           <div className="about-page__actions">
-            <a href="https://github.com/Hikky-fuji/japanpulse/issues" rel="noreferrer" target="_blank">
+            <a href="https://github.com/Hikky-fuji/macro-data-monitor/issues" rel="noreferrer" target="_blank">
               Report a data or display issue ↗
             </a>
             <Link href="/status">Check data status</Link>

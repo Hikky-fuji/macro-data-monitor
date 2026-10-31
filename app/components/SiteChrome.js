@@ -298,7 +298,7 @@ export function SiteFooter() {
           <Link href="/about">About & Methodology</Link>
           <Link href="/changelog">Changelog</Link>
           <Link href="/status">Data Status</Link>
-          <a href="https://github.com/Hikky-fuji/japanpulse" rel="noreferrer" target="_blank">GitHub ↗</a>
+          <a href="https://github.com/Hikky-fuji/macro-data-monitor" rel="noreferrer" target="_blank">GitHub ↗</a>
         </nav>
       </div>
       <p>
