@@ -54,15 +54,21 @@ function HealthSummary({ health }) {
     return <div className="operations-loading">Checking official data feeds…</div>
   }
   const total = health.items.length
+  const core = health.coreSummary || health.summary
+  const coreTotal = health.items.filter(item => item.tier === 'core').length || total
+  const archiveIssues = health.items.filter(item => item.tier === 'archive' && ['stale', 'failed'].includes(item.status)).length
   return (
     <>
       <div className="operations-health__counts">
-        <div className="is-current"><strong>{health.summary.current}</strong><span>Current</span></div>
-        <div className="is-reference"><strong>{health.summary.reference || 0}</strong><span>Reference</span></div>
-        <div className="is-stale"><strong>{health.summary.stale}</strong><span>Stale</span></div>
-        <div className="is-failed"><strong>{health.summary.failed}</strong><span>Failed</span></div>
+        <div className="is-current"><strong>{core.current}</strong><span>Core current</span></div>
+        <div className="is-reference"><strong>{core.reference || 0}</strong><span>Reference</span></div>
+        <div className="is-stale"><strong>{core.stale}</strong><span>Stale</span></div>
+        <div className="is-failed"><strong>{core.failed}</strong><span>Failed</span></div>
       </div>
-      <p>{total} official feeds rechecked on access, with a daily scheduled backstop.</p>
+      <p>
+        {coreTotal} core feeds of {total} official feeds rechecked on access, with a daily scheduled backstop.
+        {archiveIssues ? ` Archive feeds with issues: ${archiveIssues}.` : ''}
+      </p>
     </>
   )
 }
@@ -181,11 +187,11 @@ export default function WorkspaceOperations({ countryCode, expanded = false }) {
                 <HealthSummary health={health} />
                 {health?.items ? (
                   <div className="operations-health__table">
-                    {health.items.map(item => (
+                    {[...health.items].sort((a, b) => (a.tier === 'archive') - (b.tier === 'archive')).map(item => (
                       <Link href={item.href} key={item.key}>
                         <div>
                           <strong>{item.label}</strong>
-                          <small>{item.source} · {item.cadence}</small>
+                          <small>{item.tier === 'archive' ? 'Archive · ' : 'Core · '}{item.source} · {item.cadence}</small>
                           {item.message ? <small className="operations-health__reason">{item.message}</small> : null}
                         </div>
                         <span>{item.latestPeriod || 'No observation date'}</span>

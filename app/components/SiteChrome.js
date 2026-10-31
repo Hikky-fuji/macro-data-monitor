@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { isCorePage } from '../lib/core-indicators.mjs'
 import { indicatorGuideForPath } from '../lib/indicator-guides.mjs'
 import { significanceDefinition, significanceForPath } from '../lib/significance'
 
@@ -55,6 +56,9 @@ const SEARCH_ITEMS = [
   { href: '/us-macro', country: 'US', label: 'US Growth & Fed Policy', description: 'GDP, fed funds, FOMC and policy rules', keywords: 'fomc rates monetary policy taylor clarida bullard' },
 ]
 
+const isArchived = item => item.country !== 'OPS' && !['/', '/us'].includes(item.href) && !isCorePage(item.href)
+const ORDERED_SEARCH_ITEMS = [...SEARCH_ITEMS].sort((a, b) => isArchived(a) - isArchived(b))
+
 function IndicatorSearch() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -87,8 +91,8 @@ function IndicatorSearch() {
 
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase()
-    if (!normalized) return SEARCH_ITEMS
-    return SEARCH_ITEMS.filter(item => (
+    if (!normalized) return ORDERED_SEARCH_ITEMS
+    return ORDERED_SEARCH_ITEMS.filter(item => (
       `${item.country} ${item.label} ${item.description} ${item.keywords}`
         .toLowerCase()
         .includes(normalized)
@@ -128,7 +132,7 @@ function IndicatorSearch() {
                   <b>{item.country}</b>
                   <span>
                     <strong>{item.label}</strong>
-                    <small>{item.description}</small>
+                    <small>{isArchived(item) ? 'Archive · ' : ''}{item.description}</small>
                   </span>
                   <i aria-hidden="true">→</i>
                 </Link>

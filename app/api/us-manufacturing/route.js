@@ -1,3 +1,5 @@
+import { fetchFredSeries } from '../../lib/fred.js'
+
 export const revalidate = 3600
 export const dynamic = 'force-dynamic'
 
@@ -59,90 +61,44 @@ const ISM_SNAPSHOT = {
   },
 }
 
-function parseCsv(text) {
-  return text
-    .trim()
-    .split(/\r?\n/)
-    .slice(1)
-    .map(row => {
-      const [date, rawValue] = row.split(',')
-      const value = Number(rawValue)
-      return {
-        date,
-        value: rawValue === '.' || !Number.isFinite(value) ? null : value,
-      }
-    })
-}
-
-async function fetchFredSeries(apiKey, definition) {
-  if (!apiKey) {
-    const response = await fetch(
-      `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${definition.id}&cosd=2017-01-01`,
-      { next: { revalidate } },
-    )
-
-    if (!response.ok) {
-      throw new Error(`FRED returned HTTP ${response.status} for ${definition.id}`)
-    }
-
-    return {
-      ...definition,
-      observations: parseCsv(await response.text()),
-    }
-  }
-
-  const params = new URLSearchParams({
-    series_id: definition.id,
-    api_key: apiKey,
-    file_type: 'json',
-    observation_start: '2017-01-01',
-    sort_order: 'asc',
+async function fetchSeries(apiKey, definition) {
+  const observations = await fetchFredSeries(definition.id, {
+    apiKey,
+    limit: 400,
+    startDate: '2017-01-01',
+    revalidate,
   })
-  const response = await fetch(
-    `https://api.stlouisfed.org/fred/series/observations?${params}`,
-    { next: { revalidate } },
-  )
-
-  if (!response.ok) {
-    throw new Error(`FRED returned HTTP ${response.status} for ${definition.id}`)
-  }
-
-  const payload = await response.json()
-  if (payload.error_message) {
-    throw new Error(`${definition.id}: ${payload.error_message}`)
-  }
-
-  return {
-    ...definition,
-    observations: (payload.observations || []).map(observation => ({
-      date: observation.date,
-      value: observation.value === '.' ? null : Number(observation.value),
-    })),
-  }
+  if (!observations.length) throw new Error(`${definition.id}: no observations returned`)
+  return { ...definition, observations }
 }
 
-async function fetchSurvey(apiKey, definition) {
-  const entries = await Promise.all(
-    Object.entries(definition.series).map(async ([key, series]) => [
-      key,
-      await fetchFredSeries(apiKey, series),
-    ]),
-  )
+// Each survey needs its headline; component series degrade to meta.warnings.
+async function fetchSurvey(apiKey, definition, warnings) {
+  const definitions = Object.entries(definition.series)
+  const settled = await Promise.allSettled(definitions.map(([, series]) => fetchSeries(apiKey, series)))
+  const series = {}
+  settled.forEach((result, index) => {
+    const [key, seriesDefinition] = definitions[index]
+    if (result.status === 'fulfilled') series[key] = result.value
+    else if (key === 'headline') throw result.reason
+    else warnings.push(`${seriesDefinition.id}: ${result.reason?.message || 'unavailable'}`)
+  })
 
   return {
     label: definition.label,
     shortLabel: definition.shortLabel,
     source: definition.source,
-    series: Object.fromEntries(entries),
+    series,
   }
 }
 
 export async function GET() {
   try {
     const apiKey = process.env.FRED_API_KEY
+    const warnings = []
     const [empire, philly] = await Promise.all([
-      fetchSurvey(apiKey, REGIONAL_SERIES.empire),
-      fetchSurvey(apiKey, REGIONAL_SERIES.philly),
+      fetchSurvey(apiKey, REGIONAL_SERIES.empire, warnings),
+      fetchSurvey(apiKey, REGIONAL_SERIES.philly, warnings),
     ])
 
     return Response.json({
@@ -150,6 +106,7 @@ export async function GET() {
       frequency: 'Monthly',
       regional: { empire, philly },
       ism: ISM_SNAPSHOT,
+      meta: { partial: warnings.length > 0, warnings },
       cadence: [
         {
           key: 'empire',

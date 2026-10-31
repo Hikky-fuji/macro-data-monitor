@@ -185,7 +185,7 @@ export default function USHomePage() {
       country="United States"
       countryCode="US"
       title="US Macro Dashboard"
-      description="A focused view of US inflation, growth, consumption, housing, surveys, labor, monetary policy and financial conditions from official sources."
+      description="Core US releases that land overnight in Japan time — CPI, payrolls, PCE, manufacturing surveys, Fed policy and rates — from official sources."
       indicators={indicators}
       sourceNetwork="FRED · BLS · BEA"
     />

@@ -1,3 +1,5 @@
+import { fetchWithRetry } from '../../lib/resilient-fetch.js'
+
 export const revalidate = 21600
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +24,7 @@ function prevMo(year, month) {
 async function tryFetch(year, month, table, suffix) {
   const { rr, yy, mm } = urlParts(year, month)
   const url = `https://www.mhlw.go.jp/toukei/itiran/roudou/monthly/r${rr}/${yy}${mm}${suffix}/xls/${yy}${mm}${table}${suffix}.xlsx`
-  const res = await fetch(url, { next: { revalidate } })
+  const res = await fetchWithRetry(url, { next: { revalidate } }, { attempts: 2, timeoutMs: 15000 })
   return res.ok ? res.arrayBuffer() : null
 }
 
@@ -110,7 +112,7 @@ function mergeSeries(seriesArray) {
 async function tryFetchKyo(year, month, suffix) {
   const { rr, yy, mm } = urlParts(year, month)
   const url = `https://www.mhlw.go.jp/toukei/itiran/roudou/monthly/r${rr}/${yy}${mm}${suffix}/xls/kyo${yy}${mm}${suffix}.xlsx`
-  const res = await fetch(url, { next: { revalidate } })
+  const res = await fetchWithRetry(url, { next: { revalidate } }, { attempts: 2, timeoutMs: 15000 })
   return res.ok ? res.arrayBuffer() : null
 }
 

@@ -72,16 +72,6 @@ function changeSeries(observations, difference = false) {
     .slice(-24)
 }
 
-function tradeBalanceSeries(exports, imports) {
-  const importsByDate = new Map((imports || []).map(item => [item.date, item.value]))
-  return (exports || [])
-    .map(item => finite(item.value) && finite(importsByDate.get(item.date))
-      ? item.value - importsByDate.get(item.date)
-      : null)
-    .filter(finite)
-    .slice(-24)
-}
-
 function momentumLabel(kind, direction, latest) {
   const labels = {
     inflation: {
@@ -189,12 +179,6 @@ function Sparkline({ values, baseline, label }) {
   )
 }
 
-function quarterLabel(date) {
-  if (!date) return null
-  const month = Number(date.slice(5, 7))
-  return `${date.slice(0, 4)}-Q${Math.ceil(month / 3)}`
-}
-
 function detail(label, value, toneName = 'neutral') {
   return { label, value, tone: toneName }
 }
@@ -237,34 +221,19 @@ function japanCards(payload) {
   const hasSource = key => Object.prototype.hasOwnProperty.call(payload, key)
   const sourceLoading = key => !hasSource(key)
   const sourceFailed = key => hasSource(key) && payload[key] === null
-  const { cpi, yen, gdp, iip, consumption, housing, watcher, labour, jobRatio, wages, trade } = payload
+  const { cpi, tokyoCpi, wages, bojPolicy } = payload
   const headline = last(cpi?.headline)
   const core = last(cpi?.core)
   const corecore = last(cpi?.corecore)
-  const usdJpy = yen?.latest?.usdJpy
-  const yenMove = yen?.latest?.changes?.usdJpyThreeMonthPct
-  const reer = yen?.latest?.reer
-  const gdpLatest = last(gdp?.gdp_qoq)
-  const iipLatest = last(iip?.['鉱工業'])
-  const consLatest = last(consumption?.total)
-  const basicLatest = last(consumption?.basic)
-  const discLatest = last(consumption?.discretionary)
-  const housingStarts = housing?.series?.startsSaar?.observations?.filter(item => finite(item.value)) || []
-  const housingLatest = last(housingStarts)
-  const housingTotalYoy = last(housing?.series?.totalYoy?.observations?.filter(item => finite(item.value)))
-  const housingRentalYoy = last(housing?.series?.rentedYoy?.observations?.filter(item => finite(item.value)))
-  const watcherCurrent = last(watcher?.current_all)
-  const watcherOutlook = last(watcher?.outlook_all)
-  const labourLatest = last(labour?.data)
-  const ratio = jobRatio?.latest
+  const tokyoHeadline = last(tokyoCpi?.headline)
+  const tokyoCore = last(tokyoCpi?.core)
+  const tokyoCorecore = last(tokyoCpi?.corecore)
+  const trimmedMean = last(bojPolicy?.coreInflation?.trimmedMean)
+  const weightedMedian = last(bojPolicy?.coreInflation?.weightedMedian)
+  const outputGap = last(bojPolicy?.activity?.outputGap)
   const realWage = last(wages?.real)
   const nominalWage = last(wages?.nominal)
   const scheduledWage = last(wages?.scheduled)
-  const exp = last(trade?.export?.total)
-  const imp = last(trade?.import?.total)
-  const expPrior = trade?.export?.total?.at(-13)
-  const balance = finite(exp?.value) && finite(imp?.value) ? exp.value - imp.value : null
-  const toTrillion = value => finite(value) ? `${value >= 0 ? '+' : ''}¥${(value / 1e9).toFixed(1)}T` : '—'
 
   return [
     card({
@@ -286,110 +255,40 @@ function japanCards(payload) {
       unavailable: sourceFailed('cpi') || (hasSource('cpi') && !finite(headline?.value)),
     }),
     card({
-      label: 'Yen & External Costs',
-      href: '/yen-transmission',
-      mainLabel: 'USD / JPY',
-      value: fixed(usdJpy?.value, 2),
-      period: usdJpy?.date,
-      toneName: tone(yenMove, true),
+      label: 'Tokyo Prices',
+      href: '/tokyo-cpi',
+      mainLabel: 'Tokyo headline CPI',
+      value: fixed(tokyoHeadline?.value, 1, '%'),
+      period: tokyoHeadline?.date,
+      toneName: tone(tokyoHeadline?.value - 2, true),
       details: [
-        detail('3-month move', signed(yenMove, 1, '%'), tone(yenMove, true)),
-        detail('Real effective yen', fixed(reer?.value, 1)),
+        detail('Core', fixed(tokyoCore?.value, 1, '%')),
+        detail('Core-core', fixed(tokyoCorecore?.value, 1, '%')),
       ],
-      source: 'BOJ Time-Series API',
-      series: seriesValues(yen?.series?.usdJpy),
-      loading: sourceLoading('yen'),
-      unavailable: sourceFailed('yen') || (hasSource('yen') && !finite(usdJpy?.value)),
+      source: 'MIC · e-Stat',
+      series: seriesValues(tokyoCpi?.headline),
+      baseline: 2,
+      momentumKind: 'inflation',
+      loading: sourceLoading('tokyoCpi'),
+      unavailable: sourceFailed('tokyoCpi') || (hasSource('tokyoCpi') && !finite(tokyoHeadline?.value)),
     }),
     card({
-      label: 'Growth & Production',
-      href: '/gdp',
-      mainLabel: 'Real GDP QoQ',
-      value: signed(gdpLatest?.value, 1, '%'),
-      period: gdpLatest?.date,
-      toneName: tone(gdpLatest?.value),
+      label: 'Underlying Inflation',
+      href: '/boj-policy',
+      mainLabel: 'BOJ trimmed mean',
+      value: fixed(trimmedMean?.value, 1, '%'),
+      period: trimmedMean?.date,
+      toneName: tone(trimmedMean?.value - 2, true),
       details: [
-        detail('IIP MoM', signed(iipLatest?.prod_mom, 1, '%'), tone(iipLatest?.prod_mom)),
-        detail('IIP YoY', signed(iipLatest?.prod_yoy, 1, '%'), tone(iipLatest?.prod_yoy)),
+        detail('Weighted median', fixed(weightedMedian?.value, 1, '%')),
+        detail('Output gap', signed(outputGap?.value, 2, '%'), tone(outputGap?.value)),
       ],
-      source: 'Cabinet Office · METI',
-      series: seriesValues(gdp?.gdp_qoq),
-      baseline: 0,
-      momentumKind: 'growth',
-      loading: sourceLoading('gdp'),
-      unavailable: sourceFailed('gdp') || (hasSource('gdp') && !finite(gdpLatest?.value)),
-    }),
-    card({
-      label: 'Private Consumption',
-      href: '/consumption',
-      mainLabel: 'Real spending YoY',
-      value: signed(consLatest?.value, 1, '%'),
-      period: consLatest?.date,
-      toneName: tone(consLatest?.value),
-      details: [
-        detail('Basic', signed(basicLatest?.value, 1, '%'), tone(basicLatest?.value)),
-        detail('Discretionary', signed(discLatest?.value, 1, '%'), tone(discLatest?.value)),
-      ],
-      source: 'MIC · Family Survey',
-      series: seriesValues(consumption?.total),
-      baseline: 0,
-      momentumKind: 'growth',
-      loading: sourceLoading('consumption'),
-      unavailable: sourceFailed('consumption') || (hasSource('consumption') && !finite(consLatest?.value)),
-    }),
-    card({
-      label: 'Housing & Real Estate',
-      href: '/housing',
-      mainLabel: 'Housing starts · SAAR',
-      value: finite(housingLatest?.value) ? `${Math.round(housingLatest.value / 1000).toLocaleString('en-US')}K` : '—',
-      period: housingLatest?.date?.slice(0, 7),
-      toneName: tone(housingTotalYoy?.value),
-      details: [
-        detail('Total YoY', signed(housingTotalYoy?.value, 1, '%'), tone(housingTotalYoy?.value)),
-        detail('Rental YoY', signed(housingRentalYoy?.value, 1, '%'), tone(housingRentalYoy?.value)),
-      ],
-      source: 'MLIT · Statistics Dashboard API',
-      series: seriesValues(housingStarts),
-      baseline: 0,
-      momentumKind: 'activity',
-      loading: sourceLoading('housing'),
-      unavailable: sourceFailed('housing') || (hasSource('housing') && !finite(housingLatest?.value)),
-    }),
-    card({
-      label: 'Surveys & Sentiment',
-      href: '/watcher',
-      mainLabel: 'Economy Watchers',
-      value: fixed(watcherCurrent?.value, 1),
-      period: watcherCurrent?.date,
-      toneName: tone(watcherCurrent?.value - 50),
-      details: [
-        detail('Outlook DI', fixed(watcherOutlook?.value, 1), tone(watcherOutlook?.value - 50)),
-        detail('Neutral line', '50.0'),
-      ],
-      source: 'Cabinet Office',
-      series: seriesValues(watcher?.current_all),
-      baseline: 50,
-      momentumKind: 'activity',
-      loading: sourceLoading('watcher'),
-      unavailable: sourceFailed('watcher') || (hasSource('watcher') && !finite(watcherCurrent?.value)),
-    }),
-    card({
-      label: 'Employment',
-      href: '/labour',
-      mainLabel: 'Unemployment',
-      value: fixed(labourLatest?.unemploymentRate, 1, '%'),
-      period: labourLatest?.date,
-      toneName: tone(labourLatest?.unemploymentRate - 3, true),
-      details: [
-        detail('Jobs / applicant', fixed(ratio?.ratio, 2, 'x'), tone(ratio?.ratio - 1)),
-        detail('Employment YoY', signed(labourLatest?.employedYoY, 1, '%'), tone(labourLatest?.employedYoY)),
-      ],
-      source: 'MIC · MHLW',
-      series: seriesValues(labour?.data, item => item?.unemploymentRate),
-      baseline: 3,
-      momentumKind: 'unemployment',
-      loading: sourceLoading('labour'),
-      unavailable: sourceFailed('labour') || (hasSource('labour') && !finite(labourLatest?.unemploymentRate)),
+      source: 'BOJ research data',
+      series: seriesValues(bojPolicy?.coreInflation?.trimmedMean),
+      baseline: 2,
+      momentumKind: 'inflation',
+      loading: sourceLoading('bojPolicy'),
+      unavailable: sourceFailed('bojPolicy') || (hasSource('bojPolicy') && !finite(trimmedMean?.value)),
     }),
     card({
       label: 'Wages',
@@ -409,24 +308,6 @@ function japanCards(payload) {
       loading: sourceLoading('wages'),
       unavailable: sourceFailed('wages') || (hasSource('wages') && !finite(realWage?.yoy)),
     }),
-    card({
-      label: 'External Sector',
-      href: '/trade',
-      mainLabel: 'Trade balance',
-      value: toTrillion(balance),
-      period: exp?.date,
-      toneName: tone(balance),
-      details: [
-        detail('Exports YoY', signed(pctChange(exp?.value, expPrior?.value), 1, '%'), tone(pctChange(exp?.value, expPrior?.value))),
-        detail('Imports', finite(imp?.value) ? `¥${(imp.value / 1e9).toFixed(1)}T` : '—'),
-      ],
-      source: 'MOF · e-Stat',
-      series: tradeBalanceSeries(trade?.export?.total, trade?.import?.total),
-      baseline: 0,
-      momentumKind: 'balance',
-      loading: sourceLoading('trade'),
-      unavailable: sourceFailed('trade') || (hasSource('trade') && !finite(balance)),
-    }),
   ]
 }
 
@@ -434,40 +315,13 @@ function usCards(payload) {
   const hasSource = key => Object.prototype.hasOwnProperty.call(payload, key)
   const sourceLoading = key => !hasSource(key)
   const sourceFailed = key => hasSource(key) && payload[key] === null
-  const { cpi, ppi, employment, consumption, retailSales, housing, jolts, manufacturing, macro, rates } = payload
+  const { cpi, employment, consumption, manufacturing, macro, rates } = payload
   const headlineCpi = yoyFromIndex(cpi?.series?.headline?.observations)
   const coreCpi = yoyFromIndex(cpi?.series?.core?.observations)
-  const headlinePpi = yoyFromIndex(ppi?.series?.headline?.observations)
   const corePce = yoyFromIndex(consumption?.series?.corePce?.observations)
   const realPce = consumption?.series?.realPce?.observations?.filter(item => finite(item.value)) || []
-  const realDpi = consumption?.series?.realDisposableIncome?.observations?.filter(item => finite(item.value)) || []
   const saving = last(consumption?.series?.savingRate?.observations?.filter(item => finite(item.value)))
-  const restaurantSales = consumption?.series?.restaurantSales?.observations?.filter(item => finite(item.value)) || []
-  const foodAwayPrices = consumption?.series?.foodAwayCpi?.observations?.filter(item => finite(item.value)) || []
-  const foodAwayByDate = new Map(foodAwayPrices.map(item => [item.date, item.value]))
-  const diningLatest = last(restaurantSales.filter(item => finite(foodAwayByDate.get(item.date))))
-  const diningYearAgoSales = yearAgoValue(restaurantSales, diningLatest)
-  const diningYearAgoPrice = diningLatest
-    ? foodAwayByDate.get(`${Number(diningLatest.date.slice(0, 4)) - 1}${diningLatest.date.slice(4)}`)
-    : null
-  const diningRealYoy = diningLatest && finite(diningYearAgoSales) && finite(diningYearAgoPrice)
-    ? pctChange(diningLatest.value / foodAwayByDate.get(diningLatest.date), diningYearAgoSales / diningYearAgoPrice)
-    : null
   const realPceLatest = last(realPce)
-  const realDpiLatest = last(realDpi)
-  const realGdp = last(macro?.growth?.realGdpGrowth)
-  const retail = retailSales?.series?.total?.observations?.filter(item => finite(item.value)) || []
-  const retailReal = retailSales?.series?.realTotal?.observations?.filter(item => finite(item.value)) || []
-  const retailLatest = last(retail)
-  const retailRealLatest = last(retailReal)
-  const retailYearAgo = yearAgoValue(retail, retailLatest)
-  const retailRealYearAgo = yearAgoValue(retailReal, retailRealLatest)
-  const housingStarts = housing?.series?.starts?.observations?.filter(item => finite(item.value)) || []
-  const housingStartsLatest = last(housingStarts)
-  const housingStartsYearAgo = yearAgoValue(housingStarts, housingStartsLatest)
-  const mortgage = last(housing?.series?.mortgage?.observations?.filter(item => finite(item.value)))
-  const homeSales = housing?.series?.newHomeSales?.observations?.filter(item => finite(item.value)) || []
-  const homeSalesLatest = last(homeSales)
   const empire = last(manufacturing?.regional?.empire?.series?.headline?.observations?.filter(item => finite(item.value)))
   const philly = last(manufacturing?.regional?.philly?.series?.headline?.observations?.filter(item => finite(item.value)))
   const ism = last(manufacturing?.ism?.headline)
@@ -475,7 +329,9 @@ function usCards(payload) {
   const payrollLatest = last(payrolls)
   const payrollPrior = payrolls.at(-2)
   const unemployment = last(employment?.employment?.unrate)
-  const openingsRate = last(jolts?.series?.openingsRate?.observations?.filter(item => finite(item.value)))
+  const payrollThreeMonth = payrolls.length >= 4 && finite(payrollLatest?.value) && finite(payrolls.at(-4)?.value)
+    ? (payrollLatest.value - payrolls.at(-4).value) / 3
+    : null
   const fedFunds = last(macro?.policy?.fedfunds)
   const latestRules = macro?.policy?.rules?.latest
   const currentRuleValues = ['taylor93', 'balanced', 'clarida', 'bullard']
@@ -495,7 +351,7 @@ function usCards(payload) {
       toneName: tone(headlineCpi.value - 2, true),
       details: [
         detail('Core CPI', fixed(coreCpi.value, 1, '%')),
-        detail('Headline PPI', fixed(headlinePpi.value, 1, '%')),
+        detail('Core PCE', fixed(corePce.value, 1, '%')),
       ],
       source: 'BLS · FRED',
       series: yoySeries(cpi?.series?.headline?.observations),
@@ -505,78 +361,22 @@ function usCards(payload) {
       unavailable: sourceFailed('cpi') || (hasSource('cpi') && !finite(headlineCpi.value)),
     }),
     card({
-      label: 'Economic Growth',
-      href: '/us-macro#growth',
-      mainLabel: 'Real GDP QoQ SAAR',
-      value: signed(realGdp?.value, 1, '%'),
-      period: quarterLabel(realGdp?.date),
-      toneName: tone(realGdp?.value),
+      label: 'PCE & Consumption',
+      href: '/us/consumption',
+      mainLabel: 'Core PCE YoY',
+      value: fixed(corePce.value, 1, '%'),
+      period: corePce.date,
+      toneName: tone(corePce.value - 2, true),
       details: [
-        detail('GDP direction', momentum(seriesValues(macro?.growth?.realGdpGrowth), 'growth').label),
-        detail('Real PCE YoY', signed(pctChange(realPceLatest?.value, realPce.at(-13)?.value), 1, '%'), tone(pctChange(realPceLatest?.value, realPce.at(-13)?.value))),
+        detail('Real PCE MoM', signed(pctChange(realPceLatest?.value, realPce.at(-2)?.value), 2, '%'), tone(pctChange(realPceLatest?.value, realPce.at(-2)?.value))),
+        detail('Saving rate', fixed(saving?.value, 1, '%')),
       ],
       source: 'BEA · FRED',
-      series: seriesValues(macro?.growth?.realGdpGrowth),
-      baseline: 0,
-      momentumKind: 'growth',
-      loading: sourceLoading('macro'),
-      unavailable: sourceFailed('macro') || (hasSource('macro') && !finite(realGdp?.value)),
-    }),
-    card({
-      label: 'Private Consumption',
-      href: '/us/consumption',
-      mainLabel: 'Real PCE MoM',
-      value: signed(pctChange(realPceLatest?.value, realPce.at(-2)?.value), 2, '%'),
-      period: realPceLatest?.date?.slice(0, 7),
-      toneName: tone(pctChange(realPceLatest?.value, realPce.at(-2)?.value)),
-      details: [
-        detail('Real DPI MoM', signed(pctChange(realDpiLatest?.value, realDpi.at(-2)?.value), 2, '%'), tone(pctChange(realDpiLatest?.value, realDpi.at(-2)?.value))),
-        detail('Saving rate', fixed(saving?.value, 1, '%')),
-        detail('Dining real YoY', signed(diningRealYoy, 1, '%'), tone(diningRealYoy)),
-      ],
-      source: 'BEA · Census · BLS · FRED',
-      series: changeSeries(realPce),
-      baseline: 0,
-      momentumKind: 'growth',
+      series: yoySeries(consumption?.series?.corePce?.observations),
+      baseline: 2,
+      momentumKind: 'inflation',
       loading: sourceLoading('consumption'),
-      unavailable: sourceFailed('consumption') || (hasSource('consumption') && !finite(realPceLatest?.value)),
-    }),
-    card({
-      label: 'Retail Demand',
-      href: '/us/retail-sales',
-      mainLabel: 'Retail sales YoY',
-      value: signed(pctChange(retailLatest?.value, retailYearAgo), 1, '%'),
-      period: retailLatest?.date?.slice(0, 7),
-      toneName: tone(pctChange(retailRealLatest?.value, retailRealYearAgo)),
-      details: [
-        detail('Latest MoM', signed(pctChange(retailLatest?.value, retail.at(-2)?.value), 2, '%'), tone(pctChange(retailLatest?.value, retail.at(-2)?.value))),
-        detail('Real sales YoY', signed(pctChange(retailRealLatest?.value, retailRealYearAgo), 1, '%'), tone(pctChange(retailRealLatest?.value, retailRealYearAgo))),
-      ],
-      source: 'Census · FRED',
-      series: yoySeries(retail),
-      baseline: 0,
-      momentumKind: 'growth',
-      loading: sourceLoading('retailSales'),
-      unavailable: sourceFailed('retailSales') || (hasSource('retailSales') && !finite(retailLatest?.value)),
-    }),
-    card({
-      label: 'Housing & Real Estate',
-      href: '/us/housing',
-      mainLabel: 'Housing starts',
-      value: finite(housingStartsLatest?.value) ? `${housingStartsLatest.value.toLocaleString('en-US')}K` : '—',
-      period: housingStartsLatest?.date?.slice(0, 7),
-      toneName: tone(pctChange(housingStartsLatest?.value, housingStartsYearAgo)),
-      details: [
-        detail('Starts YoY', signed(pctChange(housingStartsLatest?.value, housingStartsYearAgo), 1, '%'), tone(pctChange(housingStartsLatest?.value, housingStartsYearAgo))),
-        detail('30Y mortgage', fixed(mortgage?.value, 2, '%')),
-        detail('New home sales', fixed(homeSalesLatest?.value, 0, 'K')),
-      ],
-      source: 'Census · HUD · FHFA · FRED',
-      series: yoySeries(housingStarts),
-      baseline: 0,
-      momentumKind: 'activity',
-      loading: sourceLoading('housing'),
-      unavailable: sourceFailed('housing') || (hasSource('housing') && !finite(housingStartsLatest?.value)),
+      unavailable: sourceFailed('consumption') || (hasSource('consumption') && !finite(corePce.value)),
     }),
     card({
       label: 'Surveys & Sentiment',
@@ -606,7 +406,7 @@ function usCards(payload) {
       toneName: tone(payrollLatest?.value - payrollPrior?.value),
       details: [
         detail('Unemployment', fixed(unemployment?.value, 1, '%'), tone(unemployment?.value - 4.5, true)),
-        detail('Openings rate', fixed(openingsRate?.value, 1, '%'), tone(openingsRate?.value - 4)),
+        detail('3M avg payrolls', signed(payrollThreeMonth, 0, 'K'), tone(payrollThreeMonth)),
       ],
       source: 'BLS · FRED',
       series: changeSeries(payrolls, true),
@@ -702,7 +502,7 @@ function writePulseCache(countryCode, payload) {
 }
 
 export default function WorkspacePulse({ countryCode }) {
-  const sourceTotal = countryCode === 'JP' ? 11 : 10
+  const sourceTotal = countryCode === 'JP' ? 4 : 6
   const [cards, setCards] = useState(() => countryCode === 'JP' ? japanCards({}) : usCards({}))
   const [progress, setProgress] = useState({ completed: 0, total: sourceTotal })
   const [cacheMode, setCacheMode] = useState('none')
@@ -715,28 +515,17 @@ export default function WorkspacePulse({ countryCode }) {
       ? {
           paths: {
             cpi: '/api/cpi',
-            yen: '/api/yen-transmission',
-            gdp: '/api/gdp',
-            iip: '/api/iip',
-            consumption: '/api/consumption',
-            housing: '/api/housing',
-            watcher: '/api/watcher',
-            labour: '/api/labour',
-            jobRatio: '/api/job-ratio',
+            tokyoCpi: '/api/tokyo-cpi',
             wages: '/api/wages',
-            trade: '/api/trade',
+            bojPolicy: '/api/boj-policy',
           },
           build: japanCards,
         }
       : {
           paths: {
             cpi: '/api/us-cpi',
-            ppi: '/api/us-ppi',
             employment: '/api/us-employment',
             consumption: '/api/us-consumption',
-            retailSales: '/api/us-retail-sales',
-            housing: '/api/us-housing',
-            jolts: '/api/us-jolts',
             manufacturing: '/api/us-manufacturing',
             macro: '/api/us-macro',
             rates: '/api/us-rates',
@@ -847,11 +636,11 @@ export default function WorkspacePulse({ countryCode }) {
       <header className="workspace-pulse__header">
         <div>
           <span>Macro at a glance</span>
-          <strong>Cross-indicator current pulse</strong>
+          <strong>Core indicators · current pulse</strong>
         </div>
         <small>{statusText}</small>
       </header>
-      <div className="workspace-pulse__grid">
+      <div className={`workspace-pulse__grid${cards?.length % 3 === 0 && cards.length > 4 ? ' is-three-col' : ''}`}>
         {(cards || []).map(item => item.loading ? (
           <div className="workspace-pulse__item is-loading" key={item.label}>
             <div className="workspace-pulse__topline">

@@ -244,8 +244,8 @@ export default function ManufacturingMomentumPage() {
       { key: 'employment', label: 'Employment', ismKey: 'employment' },
       { key: 'pricesPaid', label: 'Prices Paid', ismKey: 'pricesPaid' },
     ].map(row => {
-      const empireObs = empire[row.key].observations.filter(point => valid(point.value))
-      const phillyObs = philly[row.key].observations.filter(point => valid(point.value))
+      const empireObs = (empire[row.key]?.observations || []).filter(point => valid(point.value))
+      const phillyObs = (philly[row.key]?.observations || []).filter(point => valid(point.value))
       const empireObsAligned = observationsThroughMonth(empireObs, comparisonMonth)
       const phillyObsAligned = observationsThroughMonth(phillyObs, comparisonMonth)
       return {

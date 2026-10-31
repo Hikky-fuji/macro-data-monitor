@@ -183,9 +183,9 @@ test('Japan CPI routes use the current official base and matching category defin
     assert.match(source, /JAPAN_CPI_STATS_ID/)
     assert.doesNotMatch(source, /0003427113/)
   }
-  assert.match(cpiApi, /fetchSeries\('0242'\)/)
-  assert.match(cpiApi, /fetchSeries\('0241'\)/)
-  assert.match(tokyoApi, /cdArea=13100/)
+  assert.match(cpiApi, /key: 'services', cat: '0242', tab: '3'/)
+  assert.match(cpiApi, /key: 'goods_ex_fresh', cat: '0241', tab: '3'/)
+  assert.match(tokyoApi, /area: '13100'/)
   assert.doesNotMatch(tokyoApi, /13A01/)
   assert.match(page, /Goods \(ex\. Fresh Food\)/)
   assert.match(page, /2025 Base/)
@@ -208,4 +208,23 @@ test('household credit dashboard uses NY Fed flow definitions without re-annuali
   assert.match(api, /Four-quarter moving sum/)
   assert.match(page, /does not annualize or smooth them again/)
   assert.doesNotMatch(page, /3M ann\./)
+})
+
+test('core monitoring set resolves to real pages, APIs, health checks and gated smoke checks', async () => {
+  const { CORE_APIS, CORE_PAGES, isCoreApi } = await import('../app/lib/core-indicators.mjs')
+  const health = read('app/api/data-health/route.js')
+  const smoke = read('scripts/smoke-site.mjs')
+  const pulse = read('app/api/workspace-pulse/route.js')
+
+  for (const pathname of [...CORE_PAGES.JP, ...CORE_PAGES.US]) {
+    assert.ok(routeExists(pathname), `core page ${pathname} is missing page.js`)
+  }
+  for (const apiPath of CORE_APIS) {
+    assert.ok(existsSync(join(appRoot, apiPath.slice(1), 'route.js')), `core API ${apiPath} is missing`)
+    assert.ok(health.includes(`path: '${apiPath}'`), `core API ${apiPath} is not health-monitored`)
+    assert.ok(smoke.includes(`path: '${apiPath}'`), `core API ${apiPath} is not smoke-tested`)
+  }
+  for (const [, apiPath] of pulse.matchAll(/:\s*'(\/api\/[^']+)'/g)) {
+    assert.ok(isCoreApi(apiPath), `workspace pulse aggregates non-core ${apiPath}`)
+  }
 })

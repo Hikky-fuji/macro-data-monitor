@@ -1,3 +1,6 @@
+import { fetchWithRetry } from '../../lib/resilient-fetch.js'
+import { baseYearFromHeader, spliceBaseSeries, stripBaseTags } from '../../lib/boj-base-years.mjs'
+
 export const revalidate = 21600
 export const dynamic = 'force-dynamic'
 
@@ -274,11 +277,35 @@ function definitionScore(candidate, definition) {
   }
   if (definition.oneOf?.length && !definition.oneOf.map(normalize).some(term => combined.includes(term))) score -= 260
   if (definition.avoid?.some(term => combined.includes(normalize(term)))) score -= 520
-  if (combined.includes('2020base') || combined.includes('20年基準')) score += 180
-  else if (combined.includes('2015base') || combined.includes('15年基準')) score += 60
-  else if (combined.includes('2010base') || combined.includes('10年基準')) score -= 60
-  else if (combined.includes('2005base') || combined.includes('05年基準')) score -= 120
+  // Prefer the newest CPI base the BOJ publishes; older bases are linked below.
+  const baseYear = baseYearFromHeader(combined)
+  if (baseYear) score += 60 + (baseYear - 2015) * 24
   return score
+}
+
+function linkOlderBases(best, candidates) {
+  const baseYear = baseYearFromHeader(best.header)
+  if (!baseYear) return { series: best.series, bases: [] }
+
+  const stripped = stripBaseTags(best.header)
+  const parts = new Map([[baseYear, { baseYear, series: best.series }]])
+  for (const candidate of candidates) {
+    if (candidate.sheet !== best.sheet || candidate.orientation !== best.orientation) continue
+    const candidateBase = baseYearFromHeader(candidate.header)
+    if (!candidateBase || candidateBase >= baseYear || parts.has(candidateBase)) continue
+    if (stripBaseTags(candidate.header) !== stripped) continue
+    parts.set(candidateBase, { baseYear: candidateBase, series: candidate.series })
+  }
+
+  const ordered = [...parts.values()].sort((a, b) => b.baseYear - a.baseYear)
+  return {
+    series: spliceBaseSeries(ordered, periodRank),
+    bases: ordered.map(part => ({
+      baseYear: part.baseYear,
+      start: part.series[0]?.date ?? null,
+      end: part.series.at(-1)?.date ?? null,
+    })),
+  }
 }
 
 function resolveSeries(candidates, definitions) {
@@ -297,11 +324,13 @@ function resolveSeries(candidates, definitions) {
       continue
     }
 
-    series[key] = best.candidate.series.slice(-160)
+    const linked = linkOlderBases(best.candidate, candidates)
+    series[key] = linked.series.slice(-160)
     matches[key] = {
       sheet: best.candidate.sheet,
       orientation: best.candidate.orientation,
       header: best.candidate.header,
+      bases: linked.bases,
       score: best.score,
     }
   }
@@ -330,13 +359,13 @@ async function parseWorkbook(buffer, definitions) {
 }
 
 async function fetchWorkbook(url) {
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream;q=0.9,*/*;q=0.5',
       'User-Agent': 'JapanPulse/1.0 (+https://japanpulse.vercel.app)',
     },
     next: { revalidate },
-  })
+  }, { attempts: 2, timeoutMs: 20000 })
   if (!response.ok) throw new Error(`BOJ workbook returned HTTP ${response.status}`)
   return response.arrayBuffer()
 }
@@ -384,6 +413,8 @@ export async function GET() {
       automatic: true,
       partial: warnings.length > 0,
       warnings,
+      coreCpiBases: core.matches?.exFreshInstitutional?.bases ?? [],
+      coreCpiBaseNote: 'Core CPI measures link the BOJ’s official per-base y/y columns; the newest base is used for its own period and earlier bases are not rebased.',
       sources: [
         { label: 'BOJ Indicators for Core CPI', url: BOJ_CORE_CPI_URL, cadence: 'Monthly' },
         { label: 'BOJ Output Gap and Labor Market Indicators', url: BOJ_GAP_URL, cadence: 'Quarterly' },

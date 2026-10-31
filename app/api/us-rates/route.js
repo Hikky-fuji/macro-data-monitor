@@ -1,3 +1,5 @@
+import { fetchFredSeries } from '../../lib/fred.js'
+
 export const revalidate = 3600
 export const dynamic = 'force-dynamic'
 
@@ -33,53 +35,30 @@ const CURVE = [
   ['30Y', 'treasury30y'],
 ]
 
-function parseCsv(text) {
-  return text
-    .trim()
-    .split(/\r?\n/)
-    .slice(1)
-    .map(row => {
-      const [date, rawValue] = row.split(',')
-      const value = Number(rawValue)
-      return {
-        date,
-        value: rawValue === '.' || !Number.isFinite(value) ? null : value,
-      }
-    })
+// The response fails only when these are unavailable; other series degrade to
+// meta.partial so one missing curve point cannot take down the whole dashboard.
+const CORE_SERIES = ['fedFunds', 'treasury2y', 'treasury10y']
+// Daily series since 2021 exceed 1,400 observations.
+const OBSERVATION_LIMIT = 3000
+const FETCH_CONCURRENCY = 4
+
+async function fetchSeries(apiKey, definition, onFallback) {
+  const observations = await fetchFredSeries(definition.id, {
+    apiKey,
+    limit: OBSERVATION_LIMIT,
+    startDate: OBSERVATION_START,
+    revalidate,
+    onFallback,
+  })
+  return { ...definition, observations }
 }
 
-async function fetchSeries(apiKey, definition) {
-  if (!apiKey) {
-    const response = await fetch(
-      `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${definition.id}&cosd=${OBSERVATION_START}`,
-      { next: { revalidate } },
-    )
-    if (!response.ok) throw new Error(`FRED returned HTTP ${response.status} for ${definition.id}`)
-    return { ...definition, observations: parseCsv(await response.text()) }
+async function settleInBatches(entries, worker) {
+  const results = []
+  for (let index = 0; index < entries.length; index += FETCH_CONCURRENCY) {
+    results.push(...await Promise.allSettled(entries.slice(index, index + FETCH_CONCURRENCY).map(worker)))
   }
-
-  const params = new URLSearchParams({
-    series_id: definition.id,
-    api_key: apiKey,
-    file_type: 'json',
-    observation_start: OBSERVATION_START,
-    sort_order: 'asc',
-  })
-  const response = await fetch(
-    `https://api.stlouisfed.org/fred/series/observations?${params}`,
-    { next: { revalidate } },
-  )
-  if (!response.ok) throw new Error(`FRED returned HTTP ${response.status} for ${definition.id}`)
-  const payload = await response.json()
-  if (payload.error_message) throw new Error(`${definition.id}: ${payload.error_message}`)
-
-  return {
-    ...definition,
-    observations: (payload.observations || []).map(observation => ({
-      date: observation.date,
-      value: observation.value === '.' ? null : Number(observation.value),
-    })),
-  }
+  return results
 }
 
 function cleanObservations(series) {
@@ -122,13 +101,26 @@ function change(series, date, days) {
 export async function GET() {
   try {
     const apiKey = process.env.FRED_API_KEY
-    const entries = await Promise.all(
-      Object.entries(SERIES).map(async ([key, definition]) => [
-        key,
-        await fetchSeries(apiKey, definition),
-      ]),
-    )
-    const series = Object.fromEntries(entries)
+    const csvFallbacks = []
+    const definitions = Object.entries(SERIES)
+    const settled = await settleInBatches(definitions, ([, definition]) => (
+      fetchSeries(apiKey, definition, id => csvFallbacks.push(id))
+    ))
+    const series = {}
+    const missing = []
+    settled.forEach((result, index) => {
+      const [key, definition] = definitions[index]
+      if (result.status === 'fulfilled' && result.value.observations.length) {
+        series[key] = result.value
+      } else {
+        missing.push({ key, id: definition.id, reason: result.reason?.message || 'No observations returned' })
+      }
+    })
+    const missingCore = missing.filter(item => CORE_SERIES.includes(item.key))
+    if (missingCore.length) {
+      throw new Error(`Core rate series unavailable: ${missingCore.map(item => `${item.id} (${item.reason})`).join('; ')}`)
+    }
+    const warnings = missing.map(item => `${item.id} unavailable: ${item.reason}`)
     const curveDates = CURVE
       .map(([, key]) => latest(series[key])?.date)
       .filter(Boolean)
@@ -174,6 +166,12 @@ export async function GET() {
           tenYear: curveDate ? { oneDayBp: change(series.treasury10y, curveDate, 1), oneWeekBp: change(series.treasury10y, curveDate, 7), oneMonthBp: change(series.treasury10y, curveDate, 30) } : null,
         },
         policyGapToTwoYear: fedFunds && twoYear ? (twoYear.value - fedFunds.value) * 100 : null,
+      },
+      meta: {
+        partial: warnings.length > 0,
+        warnings,
+        csvFallbacks,
+        coreSeries: CORE_SERIES.map(key => SERIES[key].id),
       },
       methodology: {
         curve: 'The latest curve uses the most recent date available across every displayed Treasury maturity; the comparison curve uses the closest observation on or before three months earlier.',

@@ -1,3 +1,5 @@
+import { isCoreApi } from '../app/lib/core-indicators.mjs'
+
 const baseUrl = (process.env.BASE_URL || 'https://japanpulse.vercel.app').replace(/\/$/, '')
 
 const checks = [
@@ -38,6 +40,18 @@ const checks = [
   { path: '/api/data-health?country=US', required: ['items', 'summary'] },
 ]
 
+// Operations endpoints and core feeds gate the run; archive feeds only warn.
+const OPERATIONS_PATHS = ['/api/release-calendar', '/api/workspace-pulse', '/api/data-health']
+
+function gates(check) {
+  const path = check.path.split('?')[0]
+  return OPERATIONS_PATHS.includes(path) || isCoreApi(path)
+}
+
+function result(check, startedAt) {
+  return { path: check.path, ok: true, gating: gates(check), durationMs: Date.now() - startedAt }
+}
+
 async function inspect(check) {
   const startedAt = Date.now()
   try {
@@ -54,12 +68,20 @@ async function inspect(check) {
     if (check.path.includes('workspace-pulse') && payload.summary?.failed > 0) {
       throw new Error(`${payload.summary.failed} aggregated source(s) failed`)
     }
-    if (check.path.includes('data-health') && payload.summary?.failed > 0) {
-      throw new Error(`${payload.summary.failed} health check(s) failed`)
+    if (check.path.includes('data-health')) {
+      const core = payload.coreSummary || payload.summary
+      const coreIssues = (payload.items || [])
+        .filter(item => (item.tier || 'core') === 'core' && ['failed', 'stale'].includes(item.status))
+        .map(item => `${item.key} ${item.status}`)
+      if (core?.failed > 0 || core?.stale > 0) throw new Error(`core feed issue(s): ${coreIssues.join(', ')}`)
+      const archiveIssues = (payload.items || [])
+        .filter(item => item.tier === 'archive' && ['failed', 'stale'].includes(item.status))
+        .map(item => `${item.key} ${item.status}`)
+      if (archiveIssues.length) return { ...result(check, startedAt), warning: `archive: ${archiveIssues.join(', ')}` }
     }
-    return { path: check.path, ok: true, durationMs: Date.now() - startedAt }
+    return result(check, startedAt)
   } catch (error) {
-    return { path: check.path, ok: false, durationMs: Date.now() - startedAt, error: error.message }
+    return { ...result(check, startedAt), ok: false, error: error.message }
   }
 }
 
@@ -68,11 +90,14 @@ for (let index = 0; index < checks.length; index += 4) {
   results.push(...await Promise.all(checks.slice(index, index + 4).map(inspect)))
 }
 
-for (const result of results) {
-  const state = result.ok ? 'PASS' : 'FAIL'
-  console.log(`${state.padEnd(4)} ${String(result.durationMs).padStart(6)}ms  ${result.path}${result.error ? ` · ${result.error}` : ''}`)
+for (const item of results) {
+  const state = item.ok ? (item.warning ? 'WARN' : 'PASS') : item.gating ? 'FAIL' : 'WARN'
+  const note = item.error || item.warning
+  const tier = item.gating ? '' : ' [archive]'
+  console.log(`${state.padEnd(4)} ${String(item.durationMs).padStart(6)}ms  ${item.path}${tier}${note ? ` · ${note}` : ''}`)
 }
 
-const failures = results.filter(result => !result.ok)
-console.log(`\n${results.length - failures.length}/${results.length} checks passed against ${baseUrl}`)
+const failures = results.filter(item => !item.ok && item.gating)
+const warnings = results.filter(item => (!item.ok && !item.gating) || item.warning)
+console.log(`\n${results.length - failures.length}/${results.length} checks passed against ${baseUrl} (${warnings.length} archive warning(s))`)
 if (failures.length) process.exitCode = 1
