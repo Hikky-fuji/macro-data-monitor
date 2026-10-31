@@ -443,6 +443,13 @@ export default function BojPolicyMonitor() {
           <span>DATA GOVERNANCE</span>
           <h2>What is live</h2>
           <p>BOJ core-inflation workbooks update monthly; output-gap and labor-market workbooks update quarterly. Wages, Tankan and producer prices are joined from existing JapanPulse official-source APIs.</p>
+          {bundle.boj.meta?.coreCpiBases?.length > 1 ? (
+            <p>
+              Core CPI measures link the BOJ’s published y/y columns by CPI base:{' '}
+              {bundle.boj.meta.coreCpiBases.map(base => `${base.baseYear} base ${base.start}–${base.end}`).join(' · ')}.
+              Rates are not rebased across the break.
+            </p>
+          ) : null}
         </article>
         <article>
           <span>INTERPRETATION</span>

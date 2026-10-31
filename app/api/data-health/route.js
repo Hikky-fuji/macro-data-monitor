@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { isCoreApi } from '../../lib/core-indicators.mjs'
 import { FetchTimeoutError, fetchWithRetry } from '../../lib/resilient-fetch.js'
 
 const last = values => Array.isArray(values) && values.length ? values.at(-1) : null
@@ -9,6 +10,7 @@ const fredDate = payload => observationDate(payload?.observations)
 const DEFINITIONS = {
   JP: [
     { key: 'jp-cpi', label: 'National CPI', href: '/cpi', path: '/api/cpi', cadence: 'Monthly', maxAge: 100, source: 'MIC · e-Stat', extract: data => observationDate(data?.headline) },
+    { key: 'jp-tokyo-cpi', label: 'Tokyo CPI', href: '/tokyo-cpi', path: '/api/tokyo-cpi', cadence: 'Monthly', maxAge: 100, source: 'MIC · e-Stat', extract: data => observationDate(data?.headline) },
     { key: 'jp-ppi', label: 'CGPI / SPPI', href: '/ppi', path: '/api/ppi', cadence: 'Monthly', maxAge: 100, source: 'BOJ', extract: data => observationDate(data?.cgpi) },
     {
       key: 'jp-boj-policy',
@@ -184,6 +186,7 @@ async function inspectSource(origin, definition) {
       reference: undefined,
       referenceMessage: undefined,
       mode: definition.mode || 'AUTO',
+      tier: isCoreApi(definition.path) ? 'core' : 'archive',
       latestPeriod,
       checkedAt,
       ...fresh,
@@ -197,6 +200,7 @@ async function inspectSource(origin, definition) {
       reference: undefined,
       referenceMessage: undefined,
       mode: definition.mode || 'AUTO',
+      tier: isCoreApi(definition.path) ? 'core' : 'archive',
       latestPeriod: null,
       checkedAt,
       status: 'failed',
@@ -220,16 +224,19 @@ export async function GET(request) {
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : new URL(request.url).origin
   const items = await Promise.all(DEFINITIONS[country].map(definition => inspectSource(origin, definition)))
-  const summary = items.reduce((counts, item) => {
+  const countStatuses = list => list.reduce((counts, item) => {
     counts[item.status] += 1
     return counts
   }, { current: 0, reference: 0, stale: 0, failed: 0 })
+  const summary = countStatuses(items)
+  const coreSummary = countStatuses(items.filter(item => item.tier === 'core'))
 
   return Response.json({
     country,
     checkedAt: new Date().toISOString(),
     automatic: true,
     summary,
+    coreSummary,
     items,
   }, {
     headers: {

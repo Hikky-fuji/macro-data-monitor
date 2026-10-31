@@ -55,6 +55,7 @@ export async function fetchFredSeries(seriesId, config = {}) {
         sort_order: 'desc',
         limit: String(limit),
       })
+      if (startDate) params.set('observation_start', startDate)
       if (frequency) params.set('frequency', frequency)
       if (aggregation) params.set('aggregation_method', aggregation)
 

@@ -3,27 +3,17 @@ export const dynamic = 'force-dynamic'
 import { FetchTimeoutError, fetchWithRetry } from '../../lib/resilient-fetch.js'
 
 const SOURCES = {
+  // Core monitoring set only; archive dashboards load on their own pages.
   JP: {
     cpi: '/api/cpi',
-    yen: '/api/yen-transmission',
-    gdp: '/api/gdp',
-    iip: '/api/iip',
-    consumption: '/api/consumption',
-    housing: '/api/housing',
-    watcher: '/api/watcher',
-    labour: '/api/labour',
-    jobRatio: '/api/job-ratio',
+    tokyoCpi: '/api/tokyo-cpi',
     wages: '/api/wages',
-    trade: '/api/trade',
+    bojPolicy: '/api/boj-policy',
   },
   US: {
     cpi: '/api/us-cpi',
-    ppi: '/api/us-ppi',
     employment: '/api/us-employment',
     consumption: '/api/us-consumption',
-    retailSales: '/api/us-retail-sales',
-    housing: '/api/us-housing',
-    jolts: '/api/us-jolts',
     manufacturing: '/api/us-manufacturing',
     macro: '/api/us-macro',
     rates: '/api/us-rates',
@@ -31,7 +21,8 @@ const SOURCES = {
 }
 
 const SOURCE_TIMEOUTS = {
-  trade: 25000,
+  bojPolicy: 20000,
+  rates: 15000,
 }
 
 async function fetchSource(origin, key, path, timeoutMs = 8500) {

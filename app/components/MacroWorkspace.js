@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useState } from 'react'
 import WorkspaceOperations from './WorkspaceOperations'
 import WorkspacePulse from './WorkspacePulse'
-import { SIGNIFICANCE_LEVELS, significanceDefinition } from '../lib/significance'
+import { isCorePage } from '../lib/core-indicators.mjs'
+import { significanceDefinition } from '../lib/significance'
 
 const SOURCE_BY_PATH = {
   '/cpi': 'MIC · e-Stat',
@@ -69,18 +70,14 @@ export default function MacroWorkspace({
   sourceNetwork,
 }) {
   const [lang, setLang] = useState('en')
-  const [significanceFilter, setSignificanceFilter] = useState('all')
   const t = (value) => valueForLanguage(value, lang)
-  const indicatorCount = indicators.reduce((total, group) => total + group.items.length, 0)
-  const visibleIndicators = indicators
-    .map(group => ({
-      ...group,
-      items: group.items.filter(item => (
-        significanceFilter === 'all' || item.significance === Number(significanceFilter)
-      )),
-    }))
+  const splitGroups = keep => indicators
+    .map(group => ({ ...group, items: group.items.filter(item => isCorePage(item.href) === keep) }))
     .filter(group => group.items.length)
-  const visibleCount = visibleIndicators.reduce((total, group) => total + group.items.length, 0)
+  const visibleIndicators = splitGroups(true)
+  const archiveGroups = splitGroups(false)
+  const coreCount = visibleIndicators.reduce((total, group) => total + group.items.length, 0)
+  const archiveCount = archiveGroups.reduce((total, group) => total + group.items.length, 0)
 
   return (
     <main className="macro-workspace">
@@ -111,12 +108,12 @@ export default function MacroWorkspace({
 
       <section className="macro-workspace__summary" aria-label={`${country} workspace summary`}>
         <div>
-          <span>Dashboards</span>
-          <strong>{indicatorCount} dashboards</strong>
+          <span>Core</span>
+          <strong>{coreCount} dashboards</strong>
         </div>
         <div>
-          <span>Sections</span>
-          <strong>{indicators.length} categories</strong>
+          <span>Archive</span>
+          <strong>{archiveCount} dashboards</strong>
         </div>
         <div>
           <span>Data network</span>
@@ -133,33 +130,6 @@ export default function MacroWorkspace({
       <WorkspacePulse countryCode={countryCode} />
       <WorkspaceOperations countryCode={countryCode} />
 
-      <section className="macro-workspace__filterbar" aria-label="Filter by macro significance">
-        <div>
-          <span>MACRO SIGNIFICANCE</span>
-          <p>Relative monitoring value—not a data-quality or forecast-accuracy score.</p>
-        </div>
-        <div className="macro-workspace__filters">
-          <button
-            aria-pressed={significanceFilter === 'all'}
-            type="button"
-            onClick={() => setSignificanceFilter('all')}
-          >
-            All <b>{indicatorCount}</b>
-          </button>
-          {Object.entries(SIGNIFICANCE_LEVELS).reverse().map(([level, definition]) => (
-            <button
-              aria-pressed={significanceFilter === level}
-              key={level}
-              type="button"
-              onClick={() => setSignificanceFilter(level)}
-            >
-              <span aria-hidden="true">{definition.stars}</span> {definition.label}
-            </button>
-          ))}
-        </div>
-        <output aria-live="polite">Showing {visibleCount} of {indicatorCount}</output>
-      </section>
-
       <div className="macro-workspace__body">
         <aside className="macro-workspace__rail" aria-label="Indicator categories">
           <div className="macro-workspace__rail-label">NAVIGATOR</div>
@@ -173,6 +143,12 @@ export default function MacroWorkspace({
               </a>
             )
           })}
+          {archiveCount ? (
+            <a href="#archive" className="macro-workspace__rail-archive">
+              <span>··</span>
+              Archive ({archiveCount})
+            </a>
+          ) : null}
         </aside>
 
         <div className="macro-workspace__content">
@@ -227,6 +203,33 @@ export default function MacroWorkspace({
               </section>
             )
           })}
+
+          {archiveCount ? (
+            <details className="macro-archive" id="archive">
+              <summary>
+                <span>ARCHIVE</span>
+                <strong>{archiveCount} reference dashboards</strong>
+                <small>Outside the core monitoring set · feeds may lag and do not gate data-quality checks</small>
+              </summary>
+              <div className="macro-archive__groups">
+                {archiveGroups.map(group => (
+                  <div className="macro-archive__group" key={valueForLanguage(group.group, 'en')}>
+                    <h3>{t(group.group)}</h3>
+                    <ul>
+                      {group.items.map(item => (
+                        <li key={item.href}>
+                          <Link href={item.href}>
+                            <span>{t(item.title)}</span>
+                            <small>{t(item.badge)} · {sourceForPath(item.href, sourceNetwork)}</small>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </details>
+          ) : null}
         </div>
       </div>
     </main>

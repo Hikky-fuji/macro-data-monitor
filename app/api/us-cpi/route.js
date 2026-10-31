@@ -1,3 +1,5 @@
+import { fetchWithRetry } from '../../lib/resilient-fetch.js'
+
 export const revalidate = 3600
 export const dynamic = 'force-dynamic'
 
@@ -29,14 +31,8 @@ function preserveOfficialGap(observations) {
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 
-async function fetchWithTimeout(url, options = {}, milliseconds = 15000) {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), milliseconds)
-  try {
-    return await fetch(url, { ...options, signal: controller.signal })
-  } finally {
-    clearTimeout(timeout)
-  }
+function fetchWithTimeout(url, options = {}, milliseconds = 15000) {
+  return fetchWithRetry(url, options, { attempts: 2, timeoutMs: milliseconds })
 }
 
 async function fetchCsvSeries(definition) {
@@ -100,7 +96,7 @@ async function fetchSeries(apiKey, definition) {
       return {
         ...definition,
         delivery: 'FRED CSV fallback',
-        warning: apiError.name === 'AbortError' ? 'FRED API timed out' : apiError.message,
+        warning: apiError.name === 'FetchTimeoutError' ? 'FRED API timed out' : apiError.message,
         observations,
       }
     }

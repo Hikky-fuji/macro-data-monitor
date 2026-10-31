@@ -1,3 +1,5 @@
+import { fetchWithRetry } from '../../lib/resilient-fetch.js'
+
 export const revalidate = 21600
 export const dynamic = 'force-dynamic'
 
@@ -55,7 +57,7 @@ async function fetchDatabase(db, codes) {
     code: codes.join(','),
     startDate: START_DATE,
   })
-  const response = await fetch(`${BOJ_BASE}?${params}`, { next: { revalidate } })
+  const response = await fetchWithRetry(`${BOJ_BASE}?${params}`, { next: { revalidate } }, { attempts: 2, timeoutMs: 15000 })
   const payload = await response.json()
 
   if (!response.ok || Number(payload.STATUS) !== 200) {
