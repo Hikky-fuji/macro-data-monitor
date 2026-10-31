@@ -1,6 +1,6 @@
 {
-  "name": "JapanPulse Macro Workspace",
-  "short_name": "JapanPulse",
+  "name": "Macro Data Monitor",
+  "short_name": "Macro Monitor",
   "description": "Official-source Japan and US macroeconomic dashboards for inflation, growth, labor, policy and markets.",
   "start_url": "/",
   "display": "standalone",

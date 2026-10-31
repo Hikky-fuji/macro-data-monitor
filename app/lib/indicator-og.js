@@ -27,8 +27,8 @@ export function createIndicatorOg({ eyebrow, title, subtitle, accent = '#f08a24'
             color: '#181818',
             fontSize: 27,
             fontWeight: 800,
-          }}>JP</div>
-          <div style={{ display: 'flex', fontSize: 28, fontWeight: 700 }}>JapanPulse Macro Workspace</div>
+          }}>MD</div>
+          <div style={{ display: 'flex', fontSize: 28, fontWeight: 700 }}>Macro Data Monitor</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', color: accent, fontSize: 20, letterSpacing: 4 }}>{eyebrow}</div>

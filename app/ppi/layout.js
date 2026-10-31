@@ -1,6 +1,6 @@
 export const metadata = {
   title: {
-    absolute: 'Japan Producer Prices | JapanPulse',
+    absolute: 'Japan Producer Prices | Macro Data Monitor',
   },
   description: 'Japan CGPI and SPPI producer-price dashboard using official Bank of Japan data.',
   alternates: {

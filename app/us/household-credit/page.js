@@ -212,7 +212,7 @@ export default function HouseholdCreditDashboard() {
         <section className={styles.section}>
           <header className={styles.sectionHeader}>
             <div><span>01 / FRESH STRESS</span><h2>Transitions into serious delinquency</h2></div>
-            <p>NY Fed-published four-quarter moving sums; these are not JapanPulse annualizations or a 3-month moving average.</p>
+            <p>NY Fed-published four-quarter moving sums; they are not annualized here or converted to a 3-month moving average.</p>
           </header>
           <div className={styles.mainGrid}>
             <article className={styles.panel}>
@@ -282,7 +282,7 @@ export default function HouseholdCreditDashboard() {
         <footer className={styles.methodology}>
           <strong>Methodology.</strong> Values are read directly from the latest official NY Fed Household Debt and Credit Excel workbook.
           Serious-delinquency flows are the NY Fed&apos;s published four-quarter moving sum of balances newly becoming 90+ days late;
-          JapanPulse does not annualize or smooth them again. “All delinquent debt” equals 100 minus the workbook&apos;s current-balance share.
+          Macro Data Monitor does not annualize or smooth them again. “All delinquent debt” equals 100 minus the workbook&apos;s current-balance share.
           QoQ and YoY are percentage-point differences for rates. Credit-score charts are excluded because the source changed from Equifax
           Risk Score 3.0 to VantageScore 4.0 in 2026Q1. Source: <a href="https://www.newyorkfed.org/microeconomics/hhdc" target="_blank" rel="noreferrer">New York Fed Consumer Credit Panel / Equifax</a>.
         </footer>

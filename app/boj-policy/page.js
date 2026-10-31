@@ -442,7 +442,7 @@ export default function BojPolicyMonitor() {
         <article>
           <span>DATA GOVERNANCE</span>
           <h2>What is live</h2>
-          <p>BOJ core-inflation workbooks update monthly; output-gap and labor-market workbooks update quarterly. Wages, Tankan and producer prices are joined from existing JapanPulse official-source APIs.</p>
+          <p>BOJ core-inflation workbooks update monthly; output-gap and labor-market workbooks update quarterly. Wages, Tankan and producer prices are joined from existing Macro Data Monitor official-source APIs.</p>
           {bundle.boj.meta?.coreCpiBases?.length > 1 ? (
             <p>
               Core CPI measures link the BOJ’s published y/y columns by CPI base:{' '}
@@ -454,7 +454,7 @@ export default function BojPolicyMonitor() {
         <article>
           <span>INTERPRETATION</span>
           <h2>What is estimated</h2>
-          <p>Output gap, potential growth and BOJ core indicators are staff estimates and can be revised. JapanPulse preserves the source distinction and avoids presenting them as observed releases.</p>
+          <p>Output gap, potential growth and BOJ core indicators are staff estimates and can be revised. Macro Data Monitor preserves the source distinction and avoids presenting them as observed releases.</p>
         </article>
         <article>
           <span>SCOPE</span>

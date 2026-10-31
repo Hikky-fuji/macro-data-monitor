@@ -382,7 +382,7 @@ export default function InitialClaimsDashboard() {
       <div className={styles.shell}>
         <DashboardFreshness data={payload} source="ETA · FRED" />
         <nav className={styles.topbar}>
-          <div><Link href="/">JapanPulse</Link> / <Link href="/us">US Macro</Link> / Initial Claims</div>
+          <div><Link href="/">Macro Data Monitor</Link> / <Link href="/us">US Macro</Link> / Initial Claims</div>
           <Link href="/us">← US dashboard</Link>
         </nav>
 

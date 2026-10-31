@@ -1,6 +1,6 @@
 import { createIndicatorOg } from '../../lib/indicator-og'
 
-export const alt = 'JapanPulse US PCE, Consumer and Dining Demand Dashboard'
+export const alt = 'Macro Data Monitor · US PCE, Consumer and Dining Demand Dashboard'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 

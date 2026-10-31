@@ -6,7 +6,7 @@ export const metadata = {
     canonical: '/inbound-tourism',
   },
   openGraph: {
-    title: 'Japan Inbound Tourism & Services Exports | JapanPulse',
+    title: 'Japan Inbound Tourism & Services Exports | Macro Data Monitor',
     description: 'Track tourism volumes, value, market breadth and accommodation spillovers from official Japanese sources.',
     url: '/inbound-tourism',
   },

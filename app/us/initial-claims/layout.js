@@ -1,6 +1,6 @@
 export const metadata = {
   title: {
-    absolute: 'US Initial Claims | JapanPulse',
+    absolute: 'US Initial Claims | Macro Data Monitor',
   },
   description:
     'Weekly US unemployment insurance claims dashboard with initial claims, continued claims, insured unemployment, and labor-market stress signals.',

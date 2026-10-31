@@ -20,9 +20,9 @@ function canvasBlob(canvas) {
 }
 
 function chartFilename(canvas) {
-  const label = canvas.getAttribute('aria-label') || 'JapanPulse chart'
+  const label = canvas.getAttribute('aria-label') || 'Macro Data Monitor chart'
   const safe = label.replace(/^Economic chart showing /, '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 70)
-  return `${safe || 'japanpulse-chart'}.png`.toLowerCase()
+  return `${safe || 'macro-data-monitor-chart'}.png`.toLowerCase()
 }
 
 function setStatus(toolbar, message) {

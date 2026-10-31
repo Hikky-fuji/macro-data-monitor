@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og'
 
-export const alt = 'JapanPulse Macro Workspace'
+export const alt = 'Macro Data Monitor'
 export const size = {
   width: 1200,
   height: 630,
@@ -37,10 +37,10 @@ export default function Image() {
               fontWeight: 800,
             }}
           >
-            JP
+            MD
           </div>
           <div style={{ display: 'flex', fontSize: 28, fontWeight: 700 }}>
-            JapanPulse Macro Workspace
+            Macro Data Monitor
           </div>
         </div>
 

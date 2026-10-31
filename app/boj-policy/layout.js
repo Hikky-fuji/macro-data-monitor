@@ -1,6 +1,6 @@
 export const metadata = {
   title: {
-    absolute: 'BOJ Policy Monitor | JapanPulse',
+    absolute: 'BOJ Policy Monitor | Macro Data Monitor',
   },
   description:
     'A live BOJ policy transmission dashboard connecting underlying inflation, the output gap, labor tightness, wages and upstream prices.',
@@ -8,7 +8,7 @@ export const metadata = {
     canonical: '/boj-policy',
   },
   openGraph: {
-    title: 'BOJ Policy Monitor | JapanPulse',
+    title: 'BOJ Policy Monitor | Macro Data Monitor',
     description: 'Follow the wage-demand-inflation transmission chain with current official Bank of Japan data.',
     url: '/boj-policy',
   },

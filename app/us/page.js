@@ -2,7 +2,7 @@ import MacroWorkspace from '../components/MacroWorkspace'
 
 export const metadata = {
   title: {
-    absolute: 'US Macro Dashboard | JapanPulse',
+    absolute: 'US Macro Dashboard | Macro Data Monitor',
   },
   description:
     'US macro dashboard covering prices, GDP, retail demand, household credit, housing, surveys, employment, Fed policy and financial conditions.',
@@ -10,7 +10,7 @@ export const metadata = {
     canonical: '/us',
   },
   openGraph: {
-    title: 'US Macro Dashboard | JapanPulse',
+    title: 'US Macro Dashboard | Macro Data Monitor',
     description: 'Track US inflation, growth, retail demand, housing, labor, monetary policy and financial conditions from official sources.',
     url: '/us',
     images: [
@@ -18,7 +18,7 @@ export const metadata = {
         url: '/us/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'JapanPulse United States Macro Dashboard',
+        alt: 'Macro Data Monitor · US Macro Dashboard',
       },
     ],
   },

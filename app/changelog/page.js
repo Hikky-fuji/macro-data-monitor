@@ -2,11 +2,21 @@ import Link from 'next/link'
 
 export const metadata = {
   title: 'Changelog',
-  description: 'Material data, methodology, reliability and interface changes to JapanPulse.',
+  description: 'Material data, methodology, reliability and interface changes to Macro Data Monitor.',
   alternates: { canonical: '/changelog' },
 }
 
 const releases = [
+  {
+    date: 'October 2026',
+    title: 'Core monitoring set and new name',
+    items: [
+      'Renamed the site from JapanPulse to Macro Data Monitor; existing URLs are unchanged.',
+      'Focused both workspaces on a core set: Japan prices, wages and BOJ policy; US CPI, employment, PCE, manufacturing, rates and Fed policy.',
+      'Moved other dashboards to a collapsed Archive that stays routed and monitored but no longer gates data-quality checks.',
+      'Linked BOJ core-CPI measures across CPI base years and added retry and fallback delivery to every core feed.',
+    ],
+  },
   {
     date: 'August 2026',
     title: 'Retail, housing and official-source traceability',
@@ -53,7 +63,7 @@ export default function ChangelogPage() {
     <main className="about-page">
       <section className="about-page__hero">
         <div className="about-page__eyebrow">RELEASE NOTES / AUDIT TRAIL</div>
-        <h1>JapanPulse changelog.</h1>
+        <h1>Changelog.</h1>
         <p>
           Material changes to data coverage, methodology, reliability and presentation are recorded here.
           Routine observation updates are visible on the <Link href="/status">Data Status monitor</Link>.
