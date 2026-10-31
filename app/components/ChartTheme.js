@@ -82,7 +82,7 @@ function addExportControls(chart) {
   parent.insertBefore(toolbar, canvas)
 }
 
-Chart.defaults.color = '#c7cdd1'
+Chart.defaults.color = '#dde2e5'
 Chart.defaults.borderColor = '#4a5258'
 Chart.defaults.font.family = 'Inter, ui-sans-serif, system-ui, sans-serif'
 Chart.defaults.font.size = 12
