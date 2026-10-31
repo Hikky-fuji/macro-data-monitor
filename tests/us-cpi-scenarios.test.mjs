@@ -5,6 +5,7 @@ import {
   annualizeMonthlyRate,
   baseEffectCalendar,
   buildConstantRateScenario,
+  monthlyBlockContributions,
   nextMonthHurdles,
   scenarioSummary,
   weightedContribution,
@@ -113,4 +114,35 @@ test('summary reports year-end, horizon endpoint, and threshold timing', () => {
   assert.equal(summary.yearEnd.date, '2026-12-01')
   assert.equal(summary.final.date, '2027-01-01')
   assert.equal(summary.firstAtOrBelow.date, '2026-11-01')
+})
+
+test('monthly block contributions use the latest headline month and an implied residual', () => {
+  const months = ['2026-08-01', '2026-09-01']
+  const index = (august, september) => ({ observations: [
+    { date: months[0], value: august },
+    { date: months[1], value: september },
+  ] })
+  const series = {
+    headline: index(100, 100.3),
+    food: index(100, 100),
+    energy: index(100, 105),
+    coreGoods: index(100, 100.3),
+    coreServices: index(100, 100.4),
+    rentOfShelter: index(100, 100.4),
+    medicalServices: index(100, 100.3),
+    transportation: index(100, 100.6),
+  }
+  const weights = { food: 0.137, energy: 0.064, coreGoods: 0.192, rentOfShelter: 0.353, medicalServices: 0.069, transportation: 0.063 }
+  const result = monthlyBlockContributions(series, weights, { coreServices: 0.607 })
+
+  assert.equal(result.date, '2026-09-01')
+  closeTo(result.headline, 0.3, 1e-9)
+  assert.deepEqual(result.blocks.map(block => block.key), [
+    'food', 'energy', 'coreGoods', 'rentOfShelter', 'medicalServices', 'transportation', 'otherCoreServices',
+  ])
+  closeTo(result.blocks[1].contribution, 5 * 0.064, 1e-9)
+  const residual = result.blocks.at(-1)
+  assert.equal(residual.derived, true)
+  closeTo(residual.contribution, 0.4 * 0.607 - (0.4 * 0.353 + 0.3 * 0.069 + 0.6 * 0.063), 1e-9)
+  assert.equal(monthlyBlockContributions({}, weights, {}), null)
 })

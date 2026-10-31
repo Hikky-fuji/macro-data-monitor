@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { monthlyBlockContributions } from '../lib/us-cpi-scenarios.mjs'
 
 const last = series => Array.isArray(series) && series.length ? series.at(-1) : null
 const finite = value => Number.isFinite(value)
@@ -143,7 +144,7 @@ function momentum(values, kind = 'direction') {
   }
 }
 
-function Sparkline({ values, baseline, label }) {
+function Sparkline({ values, baseline, label, variant = 'line' }) {
   const clean = (values || []).filter(finite).slice(-24)
   if (clean.length < 2) return <div className="workspace-pulse__sparkline is-empty" />
 
@@ -162,6 +163,32 @@ function Sparkline({ values, baseline, label }) {
   const points = clean.map((value, index) => `${x(index)},${y(value)}`).join(' ')
   const baselineY = finite(baseline) ? y(baseline) : null
 
+  if (variant === 'bars') {
+    const zeroY = finite(baselineY) ? baselineY : y(Math.max(min, Math.min(max, 0)))
+    const slot = (width - padding * 2) / clean.length
+    return (
+      <svg
+        className="workspace-pulse__sparkline is-bars"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`${label}, latest ${clean.at(-1).toFixed(0)}`}
+      >
+        <line className="workspace-pulse__baseline" x1={padding} x2={width - padding} y1={zeroY} y2={zeroY} />
+        {clean.map((value, index) => (
+          <rect
+            className={value < 0 ? 'is-negative' : index === clean.length - 1 ? 'is-latest' : ''}
+            key={index}
+            x={padding + index * slot + slot * 0.15}
+            width={slot * 0.7}
+            y={Math.min(y(value), zeroY)}
+            height={Math.max(Math.abs(y(value) - zeroY), 0.8)}
+          />
+        ))}
+      </svg>
+    )
+  }
+
   return (
     <svg
       className="workspace-pulse__sparkline"
@@ -176,6 +203,123 @@ function Sparkline({ values, baseline, label }) {
       <polyline points={points} />
       <circle cx={x(clean.length - 1)} cy={y(clean.at(-1))} r="2.6" />
     </svg>
+  )
+}
+
+function ContributionPanel({ panel }) {
+  const scale = Math.max(0.05, ...panel.rows.map(row => Math.abs(row.contribution)).filter(finite))
+  return (
+    <>
+      <div className="workspace-pulse__panel-head">
+        <span>{panel.title}</span>
+        <time>{panel.period}</time>
+      </div>
+      <div className="workspace-pulse__contrib" role="table" aria-label={panel.title}>
+        <div className="workspace-pulse__contrib-row is-head" role="row">
+          <span role="columnheader">Block</span>
+          <span role="columnheader" aria-hidden="true" />
+          <span role="columnheader">Contr.</span>
+          <span role="columnheader">M/M</span>
+        </div>
+        {panel.rows.map(row => (
+          <div className="workspace-pulse__contrib-row" role="row" key={row.label}>
+            <span role="cell">{row.label}</span>
+            <span role="cell" className="workspace-pulse__contrib-track" aria-hidden="true">
+              {finite(row.contribution) ? (
+                <i
+                  className={row.contribution < 0 ? 'is-negative' : ''}
+                  style={{
+                    left: `${row.contribution < 0 ? 50 - Math.abs(row.contribution) / scale * 50 : 50}%`,
+                    width: `${Math.abs(row.contribution) / scale * 50}%`,
+                  }}
+                />
+              ) : null}
+            </span>
+            <b role="cell">{signed(row.contribution, 2)}</b>
+            <b role="cell" className={`is-${tone(row.rate, true)}`}>{signed(row.rate, 1, '%')}</b>
+          </div>
+        ))}
+        <div className="workspace-pulse__contrib-row is-total" role="row">
+          <span role="cell">Headline</span>
+          <span role="cell" aria-hidden="true" />
+          <span role="cell" aria-hidden="true" />
+          <b role="cell" className={`is-${tone(panel.headline, true)}`}>{signed(panel.headline, 1, '%')}</b>
+        </div>
+      </div>
+      <p className="workspace-pulse__panel-note">{panel.note}</p>
+    </>
+  )
+}
+
+function LinePanel({ panel }) {
+  return (
+    <>
+      <div className="workspace-pulse__panel-head">
+        <span>{panel.title}</span>
+        <time>{panel.period}</time>
+      </div>
+      <div className="workspace-pulse__panel-value">
+        <small>{panel.mainLabel}</small>
+        <strong>{panel.value}</strong>
+      </div>
+      <div className="workspace-pulse__trend">
+        <Sparkline values={panel.series} baseline={panel.baseline} label={`${panel.title} trend`} />
+      </div>
+      <div className="workspace-pulse__details">
+        {panel.details.map(row => (
+          <div key={row.label}>
+            <span>{row.label}</span>
+            <b className={`is-${row.tone}`}>{row.value}</b>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function RulePanel({ panel }) {
+  const values = [panel.actual, ...panel.rows.map(row => row.value)].filter(finite)
+  const low = Math.floor(Math.min(...values) - 0.5)
+  const high = Math.ceil(Math.max(...values) + 0.5)
+  const position = value => `${((value - low) / (high - low)) * 100}%`
+  return (
+    <>
+      <div className="workspace-pulse__panel-head">
+        <span>{panel.title}</span>
+        <time>{panel.period}</time>
+      </div>
+      <div className="workspace-pulse__rules" role="table" aria-label={panel.title}>
+        <div className="workspace-pulse__rule-row is-head" role="row">
+          <span role="columnheader">Rule</span>
+          <span role="columnheader">{low.toFixed(0)}–{high.toFixed(0)}%</span>
+          <span role="columnheader">Rate</span>
+          <span role="columnheader">Gap</span>
+        </div>
+        {panel.rows.map(row => (
+          <div className="workspace-pulse__rule-row" role="row" key={row.label}>
+            <span role="cell">{row.label}</span>
+            <span role="cell" className="workspace-pulse__rule-track" aria-hidden="true">
+              {finite(panel.actual) ? <i className="is-actual" style={{ left: position(panel.actual) }} /> : null}
+              {finite(row.value) ? <i style={{ left: position(row.value) }} /> : null}
+            </span>
+            <b role="cell">{fixed(row.value, 2, '%')}</b>
+            <b role="cell">{signed(finite(row.value) ? (panel.actual - row.value) * 100 : null, 0, 'bp')}</b>
+          </div>
+        ))}
+      </div>
+      <p className="workspace-pulse__panel-note">{panel.note}</p>
+    </>
+  )
+}
+
+const PANELS = { contributions: ContributionPanel, line: LinePanel, rules: RulePanel }
+
+function PulsePanel({ panel }) {
+  const PanelBody = PANELS[panel?.type]
+  return (
+    <div className="workspace-pulse__panel">
+      {PanelBody ? <PanelBody panel={panel} /> : <p className="workspace-pulse__panel-note">Detail unavailable</p>}
+    </div>
   )
 }
 
@@ -198,6 +342,9 @@ function card({
   loading = false,
   unavailable = false,
   mode = 'AUTO',
+  chart = 'line',
+  wide = false,
+  panel = null,
 }) {
   return {
     label,
@@ -214,6 +361,9 @@ function card({
     loading,
     unavailable,
     mode,
+    chart,
+    wide,
+    panel,
   }
 }
 
@@ -311,6 +461,16 @@ function japanCards(payload) {
   ]
 }
 
+const CPI_BLOCK_LABELS = {
+  food: 'Food',
+  energy: 'Energy',
+  coreGoods: 'Core goods',
+  rentOfShelter: 'Shelter rent',
+  medicalServices: 'Medical svcs',
+  transportation: 'Transport svcs',
+  otherCoreServices: 'Other core svcs',
+}
+
 function usCards(payload) {
   const hasSource = key => Object.prototype.hasOwnProperty.call(payload, key)
   const sourceLoading = key => !hasSource(key)
@@ -340,6 +500,12 @@ function usCards(payload) {
   const ruleRange = currentRuleValues.length
     ? `${Math.min(...currentRuleValues).toFixed(1)}–${Math.max(...currentRuleValues).toFixed(1)}%`
     : '—'
+  const cpiBlocks = cpi?.series && cpi?.contributionWeights
+    ? monthlyBlockContributions(cpi.series, cpi.contributionWeights, cpi.aggregateWeights)
+    : null
+  const ahe = (employment?.employment?.ahe || []).filter(item => finite(item.value))
+  const aheYoy = yoyFromIndex(ahe)
+  const aheMom = pctChange(last(ahe)?.value, ahe.at(-2)?.value)
 
   return [
     card({
@@ -359,6 +525,78 @@ function usCards(payload) {
       momentumKind: 'inflation',
       loading: sourceLoading('cpi'),
       unavailable: sourceFailed('cpi') || (hasSource('cpi') && !finite(headlineCpi.value)),
+      wide: true,
+      panel: cpiBlocks ? {
+        type: 'contributions',
+        title: 'What moved CPI M/M',
+        period: cpiBlocks.date.slice(0, 7),
+        headline: cpiBlocks.headline,
+        rows: cpiBlocks.blocks.map(block => ({ label: CPI_BLOCK_LABELS[block.key], rate: block.rate, contribution: block.contribution })),
+        note: `Contribution in pp, approx. with ${cpi.weightAsOf} weights · other core services is an implied residual`,
+      } : null,
+    }),
+    card({
+      label: 'Employment & Wages',
+      href: '/us/employment',
+      mainLabel: 'Nonfarm payrolls',
+      value: signed(payrollLatest?.value - payrollPrior?.value, 0, 'K'),
+      period: payrollLatest?.date?.slice(0, 7),
+      toneName: tone(payrollLatest?.value - payrollPrior?.value),
+      details: [
+        detail('Unemployment', fixed(unemployment?.value, 1, '%'), tone(unemployment?.value - 4.5, true)),
+        detail('3M avg payrolls', signed(payrollThreeMonth, 0, 'K'), tone(payrollThreeMonth)),
+      ],
+      source: 'BLS · FRED',
+      series: changeSeries(payrolls, true),
+      baseline: 0,
+      momentumKind: 'employment',
+      loading: sourceLoading('employment'),
+      unavailable: sourceFailed('employment') || (hasSource('employment') && !finite(payrollLatest?.value)),
+      wide: true,
+      chart: 'bars',
+      panel: {
+        type: 'line',
+        title: 'Average hourly earnings',
+        period: aheYoy.date,
+        mainLabel: 'AHE YoY',
+        value: fixed(aheYoy.value, 1, '%'),
+        series: yoySeries(ahe),
+        details: [
+          detail('AHE MoM', signed(aheMom, 1, '%'), tone(aheMom)),
+          detail('Level', finite(last(ahe)?.value) ? `$${last(ahe).value.toFixed(2)}/hr` : '—'),
+        ],
+      },
+    }),
+    card({
+      label: 'Monetary Policy',
+      href: '/us-macro#fed-policy',
+      mainLabel: 'Effective fed funds',
+      value: fixed(fedFunds?.value, 2, '%'),
+      period: fedFunds?.date?.slice(0, 7),
+      toneName: 'neutral',
+      details: [
+        detail('Core PCE vs 2%', signed(corePce.value - 2, 1, 'pp'), tone(corePce.value - 2, true)),
+        detail('Rule range', ruleRange),
+      ],
+      source: 'Federal Reserve · BLS',
+      series: seriesValues(macro?.policy?.fedfunds),
+      momentumKind: 'policy',
+      loading: sourceLoading('macro'),
+      unavailable: sourceFailed('macro') || (hasSource('macro') && !finite(fedFunds?.value)),
+      wide: true,
+      panel: latestRules ? {
+        type: 'rules',
+        title: 'Fed funds vs rules',
+        period: `${latestRules.date} avg`,
+        actual: latestRules.actual,
+        rows: [
+          { label: 'Taylor 1993', value: latestRules.taylor93 },
+          { label: 'Balanced', value: latestRules.balanced },
+          { label: 'Clarida proxy', value: latestRules.clarida },
+          { label: 'Bullard proxy', value: latestRules.bullard },
+        ],
+        note: `White marker = actual ${fixed(latestRules.actual, 2, '%')} · gap = actual − rule · diagnostic, not a policy signal`,
+      } : null,
     }),
     card({
       label: 'PCE & Consumption',
@@ -397,41 +635,6 @@ function usCards(payload) {
       unavailable: sourceFailed('manufacturing') || (hasSource('manufacturing') && !finite(ism?.value)),
       mode: 'MIXED · ISM MANUAL',
     }),
-    card({
-      label: 'Employment & Wages',
-      href: '/us/employment',
-      mainLabel: 'Nonfarm payrolls',
-      value: signed(payrollLatest?.value - payrollPrior?.value, 0, 'K'),
-      period: payrollLatest?.date?.slice(0, 7),
-      toneName: tone(payrollLatest?.value - payrollPrior?.value),
-      details: [
-        detail('Unemployment', fixed(unemployment?.value, 1, '%'), tone(unemployment?.value - 4.5, true)),
-        detail('3M avg payrolls', signed(payrollThreeMonth, 0, 'K'), tone(payrollThreeMonth)),
-      ],
-      source: 'BLS · FRED',
-      series: changeSeries(payrolls, true),
-      baseline: 0,
-      momentumKind: 'employment',
-      loading: sourceLoading('employment'),
-      unavailable: sourceFailed('employment') || (hasSource('employment') && !finite(payrollLatest?.value)),
-    }),
-    card({
-      label: 'Monetary Policy',
-      href: '/us-macro#fed-policy',
-      mainLabel: 'Effective fed funds',
-      value: fixed(fedFunds?.value, 2, '%'),
-      period: fedFunds?.date?.slice(0, 7),
-      toneName: 'neutral',
-      details: [
-        detail('Core PCE vs 2%', signed(corePce.value - 2, 1, 'pp'), tone(corePce.value - 2, true)),
-        detail('Rule range', ruleRange),
-      ],
-      source: 'Federal Reserve · BLS',
-      series: seriesValues(macro?.policy?.fedfunds),
-      momentumKind: 'policy',
-      loading: sourceLoading('macro'),
-      unavailable: sourceFailed('macro') || (hasSource('macro') && !finite(fedFunds?.value)),
-    }),
   ]
 }
 
@@ -459,7 +662,7 @@ async function fetchJson(path, parentSignal, timeoutMs = 12000) {
   }
 }
 
-const PULSE_CACHE_VERSION = 7
+const PULSE_CACHE_VERSION = 8
 
 function readPulseCache(countryCode, maxAge) {
   try {
@@ -623,9 +826,9 @@ export default function WorkspacePulse({ countryCode, title = 'Core indicators �
         </div>
         <small>{statusText}</small>
       </header>
-      <div className={`workspace-pulse__grid${cards?.length === 4 ? ' is-four' : ''}${cards?.length === 5 ? ' is-five' : ''}`}>
+      <div className={`workspace-pulse__grid${cards?.length === 4 ? ' is-four' : ''}${cards?.some(item => item.wide) ? ' has-wide' : ''}`}>
         {(cards || []).map(item => item.loading ? (
-          <div className="workspace-pulse__item is-loading" key={item.label}>
+          <div className={`workspace-pulse__item is-loading${item.wide ? ' is-wide' : ''}`} key={item.label}>
             <div className="workspace-pulse__topline">
               <span>{item.label}</span>
               <b>LOADING</b>
@@ -641,7 +844,7 @@ export default function WorkspacePulse({ countryCode, title = 'Core indicators �
           </div>
         ) : (
           <Link
-            className={`workspace-pulse__item is-${item.tone}${item.unavailable ? ' is-unavailable' : ''}`}
+            className={`workspace-pulse__item is-${item.tone}${item.unavailable ? ' is-unavailable' : ''}${item.wide ? ' is-wide' : ''}`}
             href={item.href}
             key={item.label}
           >
@@ -649,29 +852,32 @@ export default function WorkspacePulse({ countryCode, title = 'Core indicators �
               <span>{item.label}</span>
               <b>{dashboards[item.href]?.badge ? `${dashboards[item.href].badge} · ` : ''}Open →</b>
             </div>
-            <div className="workspace-pulse__main-label">{item.mainLabel}</div>
-            <strong>{item.unavailable ? '—' : item.value}</strong>
-            <time>{item.unavailable ? 'Source unavailable' : item.period || 'Latest available'}</time>
-            {item.unavailable ? (
-              <div className="workspace-pulse__trend is-unavailable">
-                <span>Data could not be loaded</span>
-              </div>
-            ) : (
-              <div className="workspace-pulse__trend">
-                <Sparkline values={item.series} baseline={item.baseline} label={`${item.mainLabel} trend`} />
-                <span className={`is-${item.momentum.direction}`}>
-                  {item.momentum.arrow} {item.momentum.label}
-                </span>
-              </div>
-            )}
-            <div className="workspace-pulse__details">
-              {item.details.map(row => (
-                <div key={row.label}>
-                  <span>{row.label}</span>
-                  <b className={`is-${row.tone}`}>{item.unavailable ? '—' : row.value}</b>
+            <div className="workspace-pulse__primary">
+              <div className="workspace-pulse__main-label">{item.mainLabel}</div>
+              <strong>{item.unavailable ? '—' : item.value}</strong>
+              <time>{item.unavailable ? 'Source unavailable' : item.period || 'Latest available'}</time>
+              {item.unavailable ? (
+                <div className="workspace-pulse__trend is-unavailable">
+                  <span>Data could not be loaded</span>
                 </div>
-              ))}
+              ) : (
+                <div className="workspace-pulse__trend">
+                  <Sparkline values={item.series} baseline={item.baseline} label={`${item.mainLabel} trend`} variant={item.chart === 'bars' ? 'bars' : 'line'} />
+                  <span className={`is-${item.momentum.direction}`}>
+                    {item.momentum.arrow} {item.momentum.label}
+                  </span>
+                </div>
+              )}
+              <div className="workspace-pulse__details">
+                {item.details.map(row => (
+                  <div key={row.label}>
+                    <span>{row.label}</span>
+                    <b className={`is-${row.tone}`}>{item.unavailable ? '—' : row.value}</b>
+                  </div>
+                ))}
+              </div>
             </div>
+            {item.wide && !item.unavailable ? <PulsePanel panel={item.panel} /> : null}
             {dashboards[item.href] ? (
               <div className="workspace-pulse__dashboard">
                 <b>{dashboards[item.href].title}</b>

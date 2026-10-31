@@ -1423,24 +1423,237 @@ button:focus-visible {
   background: #3f474c;
 }
 
-/* Five cards: three over two on wide screens, the last one full width in two columns. */
-@media (min-width: 981px) {
-  .workspace-pulse__grid.is-five {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-
-  .workspace-pulse__grid.is-five > * {
-    grid-column: span 2;
-  }
-
-  .workspace-pulse__grid.is-five > :nth-child(n + 4) {
-    grid-column: span 3;
+/* Wide cards carry a second panel and take two of four columns (two rows for the US). */
+@media (min-width: 1181px) {
+  .workspace-pulse__grid.has-wide {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 980px) and (min-width: 761px) {
-  .workspace-pulse__grid.is-five > :last-child {
-    grid-column: 1 / -1;
+/* Below four columns a wide card takes the full row. */
+@media (max-width: 1180px) and (min-width: 761px) {
+  .workspace-pulse__grid.has-wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 761px) {
+  .workspace-pulse__grid.has-wide > .is-wide {
+    grid-column: span 2;
+  }
+}
+
+.workspace-pulse__item.is-wide:not(.is-loading) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr);
+  column-gap: 16px;
+  align-content: start;
+}
+
+.workspace-pulse__item.is-wide > .workspace-pulse__topline,
+.workspace-pulse__item.is-wide > .workspace-pulse__dashboard,
+.workspace-pulse__item.is-wide > footer {
+  grid-column: 1 / -1;
+}
+
+.workspace-pulse__panel {
+  min-width: 0;
+  margin-top: 12px;
+  padding-left: 15px;
+  border-left: 1px solid #3d464b;
+}
+
+.workspace-pulse__panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.workspace-pulse__panel-head span {
+  color: #b8c0c4;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.workspace-pulse__panel-head time {
+  overflow: hidden;
+  color: #aeb6bb;
+  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-pulse__panel-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.workspace-pulse__panel-value small {
+  color: #939da3;
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.workspace-pulse__panel-value strong {
+  color: #fff;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.workspace-pulse__panel .workspace-pulse__trend {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-pulse__panel-note {
+  margin: 7px 0 0;
+  color: #899399;
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+
+.workspace-pulse__contrib,
+.workspace-pulse__rules {
+  display: grid;
+  gap: 3px;
+}
+
+.workspace-pulse__contrib-row,
+.workspace-pulse__rule-row {
+  display: grid;
+  grid-template-columns: minmax(88px, 1.4fr) minmax(36px, 1fr) 42px 42px;
+  align-items: center;
+  gap: 7px;
+  color: #dfe4e7;
+  font-size: 11px;
+}
+
+.workspace-pulse__rule-row {
+  grid-template-columns: minmax(74px, 1fr) minmax(56px, 1.3fr) 44px 48px;
+}
+
+.workspace-pulse__contrib-row > span:first-child,
+.workspace-pulse__rule-row > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-pulse__contrib-row b,
+.workspace-pulse__rule-row b {
+  color: #eef1f2;
+  font: 650 10.5px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  text-align: right;
+}
+
+.workspace-pulse__contrib-row b.is-positive { color: var(--jp-green); }
+.workspace-pulse__contrib-row b.is-negative { color: var(--jp-red); }
+
+.workspace-pulse__contrib-row.is-total {
+  padding-top: 3px;
+  border-top: 1px solid #3d464b;
+  font-weight: 650;
+}
+
+.workspace-pulse__contrib-row.is-head,
+.workspace-pulse__rule-row.is-head {
+  padding-bottom: 3px;
+  border-bottom: 1px solid #3d464b;
+  color: #939da3;
+  font-size: 9px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.workspace-pulse__contrib-row.is-head > span:nth-child(n + 3),
+.workspace-pulse__rule-row.is-head > span:nth-child(n + 2) {
+  text-align: right;
+}
+
+.workspace-pulse__rule-row.is-head > span:nth-child(2) {
+  text-align: center;
+}
+
+.workspace-pulse__contrib-track,
+.workspace-pulse__rule-track {
+  position: relative;
+  height: 10px;
+}
+
+.workspace-pulse__contrib-track::before,
+.workspace-pulse__rule-track::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: #5b656b;
+  content: "";
+}
+
+.workspace-pulse__rule-track::before {
+  top: 50%;
+  bottom: auto;
+  left: 0;
+  width: 100%;
+  height: 1px;
+}
+
+.workspace-pulse__contrib-track i {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  background: #e2703a;
+}
+
+.workspace-pulse__contrib-track i.is-negative {
+  background: #5c8fd6;
+}
+
+.workspace-pulse__rule-track i {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e5ad16;
+  transform: translate(-50%, -50%);
+}
+
+.workspace-pulse__rule-track i.is-actual {
+  width: 2px;
+  height: 12px;
+  border-radius: 0;
+  background: #fff;
+}
+
+.workspace-pulse__sparkline.is-bars rect {
+  fill: currentColor;
+  opacity: .55;
+}
+
+.workspace-pulse__sparkline.is-bars rect.is-latest {
+  opacity: 1;
+}
+
+.workspace-pulse__sparkline.is-bars rect.is-negative {
+  fill: var(--jp-red);
+  opacity: .75;
+}
+
+@media (max-width: 760px) {
+  .workspace-pulse__item.is-wide:not(.is-loading) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-pulse__panel {
+    padding: 11px 0 0;
+    border-top: 1px solid #3d464b;
+    border-left: 0;
   }
 }
 
@@ -1488,7 +1701,8 @@ button:focus-visible {
   white-space: nowrap;
 }
 
-.workspace-pulse__item > strong {
+.workspace-pulse__item > strong,
+.workspace-pulse__primary > strong {
   display: inline-block;
   margin-top: 3px;
   color: #fff;
@@ -1497,7 +1711,8 @@ button:focus-visible {
   letter-spacing: -.025em;
 }
 
-.workspace-pulse__item > time {
+.workspace-pulse__item > time,
+.workspace-pulse__primary > time {
   float: right;
   margin-top: 12px;
   color: #aeb6bb;

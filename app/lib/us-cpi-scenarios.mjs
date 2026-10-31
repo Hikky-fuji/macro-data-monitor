@@ -178,3 +178,38 @@ export function scenarioSummary(scenario, threshold = 2.5) {
   const firstAtOrBelow = scenario.points.find(point => finite(point.yoy) && point.yoy <= threshold) ?? null
   return { yearEnd, final, firstAtOrBelow, threshold }
 }
+
+const MONTHLY_BLOCKS = ['food', 'energy', 'coreGoods', 'rentOfShelter', 'medicalServices', 'transportation']
+const RESIDUAL_COMPONENTS = ['rentOfShelter', 'medicalServices', 'transportation']
+
+// Approximate contribution of each non-overlapping CPI block to the latest
+// headline M/M change, using fixed relative-importance weights. "Other core
+// services" is the implied residual of core services.
+export function monthlyBlockContributions(series = {}, weights = {}, aggregateWeights = {}) {
+  const latest = latestObservation(series.headline?.observations)
+  if (!latest) return null
+  const previous = addMonths(latest.date, -1)
+  const mom = key => {
+    const values = observationMap(series[key]?.observations)
+    return monthOverMonth(values.get(latest.date), values.get(previous))
+  }
+
+  const blocks = MONTHLY_BLOCKS.map(key => ({
+    key,
+    rate: mom(key),
+    contribution: weightedContribution(mom(key), weights[key]),
+  }))
+  const residual = weightedResidual(
+    mom('coreServices'),
+    aggregateWeights.coreServices,
+    RESIDUAL_COMPONENTS.map(key => ({ rate: mom(key), weight: weights[key] })),
+  )
+  blocks.push({
+    key: 'otherCoreServices',
+    rate: residual?.rate ?? null,
+    contribution: residual?.contribution ?? null,
+    derived: true,
+  })
+
+  return { date: latest.date, headline: mom('headline'), blocks }
+}
