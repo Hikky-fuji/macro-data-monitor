@@ -11,7 +11,7 @@ const releases = [
     date: 'October 2026',
     title: 'Core monitoring set and new name',
     items: [
-      'Renamed the site from JapanPulse to Macro Data Monitor; existing URLs are unchanged.',
+      'Renamed the site from JapanPulse to Macro Data Monitor and moved it to macro-data-monitor.vercel.app; the former address redirects.',
       'Focused both workspaces on a core set: Japan prices, wages and BOJ policy; US CPI, employment, PCE, manufacturing, rates and Fed policy.',
       'Moved other dashboards to a collapsed Archive that stays routed and monitored but no longer gates data-quality checks.',
       'Linked BOJ core-CPI measures across CPI base years and added retry and fallback delivery to every core feed.',

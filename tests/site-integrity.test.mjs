@@ -228,3 +228,14 @@ test('core monitoring set resolves to real pages, APIs, health checks and gated 
     assert.ok(isCoreApi(apiPath), `workspace pulse aggregates non-core ${apiPath}`)
   }
 })
+
+test('canonical origin is defined once and matches the production smoke target', async () => {
+  const { SITE_URL } = await import('../app/lib/site.mjs')
+  const pkg = JSON.parse(read('package.json'))
+
+  assert.match(SITE_URL, /^https:\/\/[^/]+$/)
+  assert.ok(pkg.scripts['smoke:production'].includes(`BASE_URL=${SITE_URL} `), 'smoke:production must target SITE_URL')
+  for (const file of walk(appRoot).filter(path => /\.(m?js)$/.test(path) && !path.endsWith('site.mjs'))) {
+    assert.doesNotMatch(readFileSync(file, 'utf8'), /japanpulse\.vercel\.app/, `${relative(root, file)} hardcodes the former domain`)
+  }
+})

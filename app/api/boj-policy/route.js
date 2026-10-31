@@ -1,5 +1,6 @@
 import { fetchWithRetry } from '../../lib/resilient-fetch.js'
 import { baseYearFromHeader, spliceBaseSeries, stripBaseTags } from '../../lib/boj-base-years.mjs'
+import { SITE_URL } from '../../lib/site.mjs'
 
 export const revalidate = 21600
 export const dynamic = 'force-dynamic'
@@ -362,7 +363,7 @@ async function fetchWorkbook(url) {
   const response = await fetchWithRetry(url, {
     headers: {
       Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream;q=0.9,*/*;q=0.5',
-      'User-Agent': 'JapanPulse/1.0 (+https://japanpulse.vercel.app)',
+      'User-Agent': `JapanPulse/1.0 (+${SITE_URL})`,
     },
     next: { revalidate },
   }, { attempts: 2, timeoutMs: 20000 })

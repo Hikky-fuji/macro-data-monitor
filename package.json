@@ -7,7 +7,7 @@
     "start": "next start",
     "test": "node --test tests/*.test.mjs",
     "check": "npm test && npm run build",
-    "smoke:production": "BASE_URL=https://japanpulse.vercel.app node scripts/smoke-site.mjs"
+    "smoke:production": "BASE_URL=https://macro-data-monitor.vercel.app node scripts/smoke-site.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^1.5.0",

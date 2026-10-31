@@ -2,29 +2,30 @@ import { Analytics } from "@vercel/analytics/next"
 import ChartTheme from './components/ChartTheme'
 import { SiteFooter, SiteHeader } from './components/SiteChrome'
 import './globals.css'
+import { SITE_URL } from './lib/site.mjs'
 
 const structuredData = {
   '@context': 'https://schema.org',
   '@graph': [
     {
       '@type': 'WebSite',
-      '@id': 'https://japanpulse.vercel.app/#website',
+      '@id': `${SITE_URL}/#website`,
       name: 'Macro Data Monitor',
-      url: 'https://japanpulse.vercel.app/',
+      url: `${SITE_URL}/`,
       description: 'Official-source Japan and US macroeconomic dashboards for fast cross-indicator analysis.',
       inLanguage: ['en', 'ja'],
     },
     {
       '@type': 'DataCatalog',
-      '@id': 'https://japanpulse.vercel.app/#catalog',
+      '@id': `${SITE_URL}/#catalog`,
       name: 'Macro Data Monitor',
-      url: 'https://japanpulse.vercel.app/',
+      url: `${SITE_URL}/`,
       description: 'A curated catalog of Japan and United States macroeconomic dashboards built from official APIs and published datasets.',
       dataset: [
         {
           '@type': 'Dataset',
           name: 'Japan macroeconomic indicators',
-          url: 'https://japanpulse.vercel.app/',
+          url: `${SITE_URL}/`,
           temporalCoverage: '2021/..',
           spatialCoverage: 'Japan',
           creator: { '@type': 'Organization', name: 'Macro Data Monitor' },
@@ -32,7 +33,7 @@ const structuredData = {
         {
           '@type': 'Dataset',
           name: 'United States macroeconomic indicators',
-          url: 'https://japanpulse.vercel.app/us',
+          url: `${SITE_URL}/us`,
           temporalCoverage: '2015/..',
           spatialCoverage: 'United States',
           creator: { '@type': 'Organization', name: 'Macro Data Monitor' },
@@ -43,7 +44,7 @@ const structuredData = {
 }
 
 export const metadata = {
-  metadataBase: new URL('https://japanpulse.vercel.app'),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: 'Macro Data Monitor',
     template: '%s | Macro Data Monitor',
