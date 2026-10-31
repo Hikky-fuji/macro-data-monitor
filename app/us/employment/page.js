@@ -347,12 +347,12 @@ export default function USEmploymentPage() {
     },
     scales: {
       x: {
-        grid: { color: '#DCE3EA' },
-        ticks: { color: '#344454', font: { size: 12, weight: '600' }, callback: v => v.toFixed(1) + '%' },
+        grid: { color: '#4a5258' },
+        ticks: { color: '#e6eaec', font: { size: 12, weight: '600' }, callback: v => v.toFixed(1) + '%' },
       },
       y: {
         grid: { display: false },
-        ticks: { color: '#1F2D3A', font: { size: 12, weight: '600' } },
+        ticks: { color: '#f5f7f8', font: { size: 12, weight: '600' } },
       },
     },
   }
@@ -373,14 +373,14 @@ export default function USEmploymentPage() {
     },
     scales: {
       x: {
-        grid: { color: '#DCE3EA' },
-        title: { display: true, text: 'Avg Hourly Earnings ($)', color: '#1F2D3A', font: { size: 12, weight: '600' } },
-        ticks: { color: '#344454', font: { size: 12, weight: '600' }, callback: v => '$' + v.toFixed(0) },
+        grid: { color: '#4a5258' },
+        title: { display: true, text: 'Avg Hourly Earnings ($)', color: '#f5f7f8', font: { size: 12, weight: '600' } },
+        ticks: { color: '#e6eaec', font: { size: 12, weight: '600' }, callback: v => '$' + v.toFixed(0) },
       },
       y: {
-        grid: { color: '#DCE3EA' },
-        title: { display: true, text: 'AHE YoY (%)', color: '#1F2D3A', font: { size: 12, weight: '600' } },
-        ticks: { color: '#344454', font: { size: 12, weight: '600' }, callback: v => v.toFixed(1) + '%' },
+        grid: { color: '#4a5258' },
+        title: { display: true, text: 'AHE YoY (%)', color: '#f5f7f8', font: { size: 12, weight: '600' } },
+        ticks: { color: '#e6eaec', font: { size: 12, weight: '600' }, callback: v => v.toFixed(1) + '%' },
       },
     },
   }
