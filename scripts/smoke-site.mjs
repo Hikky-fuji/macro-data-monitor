@@ -57,7 +57,7 @@ async function inspect(check) {
   const startedAt = Date.now()
   try {
     const response = await fetch(`${baseUrl}${check.path}`, {
-      headers: { 'User-Agent': 'JapanPulse production smoke test' },
+      headers: { 'User-Agent': 'Macro Data Monitor production smoke test' },
       signal: AbortSignal.timeout(check.path.includes('data-health') ? 65000 : 30000),
     })
     const payload = await response.json()

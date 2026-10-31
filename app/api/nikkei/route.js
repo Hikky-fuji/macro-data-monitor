@@ -6,7 +6,7 @@ export async function GET() {
     const res = await fetch(
       'https://query1.finance.yahoo.com/v8/finance/chart/%5EN225?interval=1mo&range=5y',
       {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; JapanPulseDashboard/1.0)' },
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroDataMonitor/1.0)' },
         next: { revalidate },
       }
     )

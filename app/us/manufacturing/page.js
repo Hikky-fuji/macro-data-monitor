@@ -373,7 +373,7 @@ export default function ManufacturingMomentumPage() {
     return (
       <main className={styles.page}>
         <div className={styles.state}>
-          <h1>Loading manufacturing pulse…</h1>
+          <h1>Loading manufacturing surveys…</h1>
           <p>Connecting to regional Federal Reserve survey data.</p>
         </div>
       </main>

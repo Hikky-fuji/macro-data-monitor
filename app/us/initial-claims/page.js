@@ -418,7 +418,7 @@ export default function InitialClaimsDashboard() {
             tone={model.latest4w > model.prior4w ? 'negative' : 'positive'}
             rows={[
               { label: 'W/W', value: signedClaims(model.latest4w - model.prior4w) },
-              { label: '13W pulse', value: signedPercent(model.momentum13) },
+              { label: '13W change', value: signedPercent(model.momentum13) },
             ]}
           />
           <MetricCard
@@ -446,7 +446,7 @@ export default function InitialClaimsDashboard() {
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <div>
-              <span>Layoff pulse</span>
+              <span>Layoff signal</span>
               <h2>Initial claims and the 4-week signal</h2>
             </div>
             <p>Weekly filings with the official noise-reducing four-week moving average.</p>

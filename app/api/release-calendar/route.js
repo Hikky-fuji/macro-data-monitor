@@ -110,7 +110,7 @@ function event({
 
 async function fetchText(url) {
   const response = await fetch(url, {
-    headers: { 'User-Agent': 'JapanPulse release calendar' },
+    headers: { 'User-Agent': 'Macro Data Monitor release calendar' },
     next: { revalidate },
   })
   if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`)

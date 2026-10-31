@@ -33,7 +33,7 @@ async function fetchSeries(definition) {
   const response = await fetch(`${API_BASE}?${params}`, {
     next: { revalidate },
     signal: AbortSignal.timeout(15000),
-    headers: { 'User-Agent': 'JapanPulse housing dashboard' },
+    headers: { 'User-Agent': 'Macro Data Monitor housing dashboard' },
   })
   if (!response.ok) throw new Error(`Statistics Dashboard returned HTTP ${response.status}`)
   const payload = await response.json()

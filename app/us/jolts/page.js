@@ -264,7 +264,7 @@ export default function JoltsDashboard() {
 
         <header className={styles.hero}>
           <div className={styles.eyebrow}>US / LABOR DEMAND & TURNOVER</div>
-          <h1>JOLTS Labor Market Pulse</h1>
+          <h1>JOLTS Labor Market Flows</h1>
           <p>
             A demand-side view of the labor market: unfilled jobs, hiring, voluntary quits,
             layoffs and the balance between available workers and available positions.

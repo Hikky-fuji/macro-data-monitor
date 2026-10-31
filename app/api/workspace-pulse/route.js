@@ -32,7 +32,7 @@ async function fetchSource(origin, key, path, timeoutMs = 8500) {
   try {
     const response = await fetchWithRetry(`${origin}${path}`, {
       next: { revalidate: 900 },
-      headers: { 'User-Agent': 'JapanPulse workspace aggregator' },
+      headers: { 'User-Agent': 'Macro Data Monitor workspace aggregator' },
     }, {
       attempts: 2,
       timeoutMs,

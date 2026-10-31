@@ -363,7 +363,7 @@ async function fetchWorkbook(url) {
   const response = await fetchWithRetry(url, {
     headers: {
       Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream;q=0.9,*/*;q=0.5',
-      'User-Agent': `JapanPulse/1.0 (+${SITE_URL})`,
+      'User-Agent': `MacroDataMonitor/1.0 (+${SITE_URL})`,
     },
     next: { revalidate },
   }, { attempts: 2, timeoutMs: 20000 })

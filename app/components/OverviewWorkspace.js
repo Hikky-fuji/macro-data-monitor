@@ -109,7 +109,7 @@ function CountrySection({ country, core }) {
 
       <WorkspacePulse
         countryCode={country.code}
-        title={`${country.name} · current pulse`}
+        title={`${country.name} · latest readings`}
         dashboards={Object.fromEntries(core.map(item => [item.href, {
           title: en(item.title),
           subtitle: en(item.subtitle),
