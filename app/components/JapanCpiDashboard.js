@@ -186,7 +186,11 @@ function chartOptions({ stacked = false, unit = '%' } = {}) {
         backgroundColor: '#142b3c',
         padding: 10,
         callbacks: {
-          label: context => `${context.dataset.label}: ${valid(context.parsed.y) ? context.parsed.y.toFixed(2) : '—'}${unit}`,
+          // Horizontal bars carry the value on x; y is the category index.
+          label: context => {
+            const value = context.chart.options.indexAxis === 'y' ? context.parsed.x : context.parsed.y
+            return `${context.dataset.label}: ${valid(value) ? value.toFixed(2) : '—'}${unit}`
+          },
         },
       },
     },
