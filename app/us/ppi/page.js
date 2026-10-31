@@ -290,7 +290,7 @@ export default function ProducerPriceDashboard() {
           <div className={styles.mainGrid}>
             <article className={styles.panel}>
               <div className={styles.panelHeading}>
-                <div><h3>PPI inflation pulse</h3><p>Percent change · 5-year window</p></div>
+                <div><h3>PPI inflation trend</h3><p>Percent change · 5-year window</p></div>
                 <span className={styles.tag}>{model.state.label}</span>
               </div>
               <div className={styles.chart}><Line data={model.inflationChart} options={chartOptions()} /></div>

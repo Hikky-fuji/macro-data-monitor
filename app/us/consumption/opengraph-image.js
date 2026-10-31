@@ -6,7 +6,7 @@ export const contentType = 'image/png'
 
 export default function Image() {
   return createIndicatorOg({
-    eyebrow: 'UNITED STATES / CONSUMER PULSE',
+    eyebrow: 'UNITED STATES / CONSUMER SPENDING',
     title: 'PCE, income and dining demand.',
     subtitle: 'Inflation, real spending, household capacity and official price-adjusted restaurant sales.',
     accent: '#60d4af',

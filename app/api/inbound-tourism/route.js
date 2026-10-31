@@ -247,7 +247,7 @@ function parseAccommodationWorkbook(workbook, XLSX) {
 
 async function fetchText(url) {
   const response = await fetch(url, {
-    headers: { 'User-Agent': 'JapanPulse/1.0 (official-data dashboard)' },
+    headers: { 'User-Agent': 'MacroDataMonitor/1.0 (official-data dashboard)' },
     next: { revalidate },
   })
   if (!response.ok) throw new Error(`${response.status} from ${url}`)
@@ -264,7 +264,7 @@ async function latestWorkbook(pageUrl) {
   const links = workbookLinks(html, pageUrl)
   if (!links.length) throw new Error(`No current workbook found at ${pageUrl}`)
   const response = await fetch(links[0], {
-    headers: { 'User-Agent': 'JapanPulse/1.0 (official-data dashboard)' },
+    headers: { 'User-Agent': 'MacroDataMonitor/1.0 (official-data dashboard)' },
     next: { revalidate },
   })
   if (!response.ok) throw new Error(`${response.status} from ${links[0]}`)

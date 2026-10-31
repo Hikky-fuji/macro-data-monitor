@@ -333,7 +333,7 @@ export default function ConsumptionDashboard() {
 
         <header className={styles.hero}>
           <div className={styles.eyebrow}>US / PERSONAL INCOME & OUTLAYS</div>
-          <h1>PCE Inflation & Consumer Pulse</h1>
+          <h1>PCE Inflation & Consumer Spending</h1>
           <p>
             The Fed&apos;s preferred inflation gauge paired with real spending, disposable income,
             the goods-services mix and the household saving buffer.
@@ -370,7 +370,7 @@ export default function ConsumptionDashboard() {
 
         <section className={styles.section}>
           <header className={styles.sectionHeader}>
-            <div><span>01 / INFLATION PULSE</span><h2>Headline, core and near-term momentum</h2></div>
+            <div><span>01 / INFLATION TREND</span><h2>Headline, core and near-term momentum</h2></div>
             <p>YoY trends are slow moving; the 3-month annualized core rate highlights turning points sooner.</p>
           </header>
           <div className={styles.mainGrid}>
@@ -424,7 +424,7 @@ export default function ConsumptionDashboard() {
             <div className={styles.mainGrid}>
               <article className={styles.panel}>
                 <div className={styles.panelHeading}>
-                  <div><h3>Dining demand pulse</h3><p>YoY percent · official Census and BLS series</p></div>
+                  <div><h3>Dining demand</h3><p>YoY percent · official Census and BLS series</p></div>
                   <span className={styles.tag}>{model.diningState.label}</span>
                 </div>
                 <div className={styles.chartSmall}><Line data={model.diningChart} options={chartOptions()} /></div>

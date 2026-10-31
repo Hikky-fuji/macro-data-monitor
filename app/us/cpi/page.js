@@ -397,7 +397,7 @@ export default function USCpiDashboard() {
         </header>
 
         <nav className={styles.sectionNav} aria-label="CPI analysis sections">
-          <a href="#inflation-pulse">Inflation pulse</a>
+          <a href="#inflation-trend">Inflation trend</a>
           <a href="#scenario-lab">Scenario lab</a>
           <a href="#underlying">Underlying</a>
           <a href="#composition">Composition</a>
@@ -411,9 +411,9 @@ export default function USCpiDashboard() {
           <KpiCard label="Services ex Shelter" stats={model.servicesStats} note="BLS services less rent of shelter; includes energy services" />
         </section>
 
-        <section className={styles.section} id="inflation-pulse">
+        <section className={styles.section} id="inflation-trend">
           <div className={styles.sectionHeader}>
-            <div><div className={styles.sectionKicker}>Inflation pulse</div><h2>Direction and persistence</h2></div>
+            <div><div className={styles.sectionKicker}>Inflation trend</div><h2>Direction and persistence</h2></div>
             <p>Year-over-year rates use unadjusted indices and preserve the official October 2025 gap. The 2% line is a policy reference, not a CPI target.</p>
           </div>
           <div className={styles.twoCol}>

@@ -444,7 +444,7 @@ export default function JapanCpiDashboard({ variant = 'national' }) {
         </header>
 
         <nav className={styles.sectionNav} aria-label="CPI analysis sections">
-          <a href="#inflation-pulse">Inflation pulse</a>
+          <a href="#inflation-trend">Inflation trend</a>
           {isTokyo ? <a href="#leading">Lead on national</a> : <a href="#underlying">Underlying</a>}
           <a href="#composition">Composition</a>
           <a href="#spotlight">Policy &amp; salience watch</a>
@@ -457,9 +457,9 @@ export default function JapanCpiDashboard({ variant = 'national' }) {
           <KpiCard label="Services" stats={model.servicesStats} momentum={model.momentum.services} note="All services incl. imputed rent (matches the SA series)" />
         </section>
 
-        <section className={styles.section} id="inflation-pulse">
+        <section className={styles.section} id="inflation-trend">
           <div className={styles.sectionHeader}>
-            <div><div className={styles.sectionKicker}>Inflation pulse</div><h2>Direction and persistence</h2></div>
+            <div><div className={styles.sectionKicker}>Inflation trend</div><h2>Direction and persistence</h2></div>
             <p>Official year-over-year rates. The 2% line is the BOJ price-stability target.</p>
           </div>
           <div className={styles.twoCol}>

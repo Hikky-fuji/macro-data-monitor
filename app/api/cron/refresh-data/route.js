@@ -14,7 +14,7 @@ const ENDPOINTS = [
 async function warm(origin, path) {
   const response = await fetch(`${origin}${path}`, {
     cache: 'no-store',
-    headers: { 'User-Agent': 'JapanPulse scheduled data refresh' },
+    headers: { 'User-Agent': 'Macro Data Monitor scheduled data refresh' },
   })
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   const payload = await response.json()

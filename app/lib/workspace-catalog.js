@@ -51,7 +51,7 @@ export const US_INDICATORS = [
       {
         href: '/us/consumption',
         significance: 3,
-        title: 'PCE & Consumer Pulse',
+        title: 'PCE & Consumer Spending',
         subtitle: 'PCE / Real Spending / Income / Dining Demand',
         badge: 'Monthly',
         desc: 'Tracks the Fed’s preferred inflation gauge alongside real spending, income, saving and price-adjusted restaurant sales.',
@@ -123,7 +123,7 @@ export const US_INDICATORS = [
       {
         href: '/us/jolts',
         significance: 2,
-        title: 'JOLTS Labor Market Pulse',
+        title: 'JOLTS Labor Market Flows',
         subtitle: 'Openings / Hires / Quits / Layoffs',
         badge: 'Monthly',
         desc: 'Measures labor demand, worker confidence and turnover through openings, quits and layoffs.',
