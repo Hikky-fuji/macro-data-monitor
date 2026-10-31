@@ -273,7 +273,7 @@ product_direction:
     requests expansion. Do not delete the route or feed without an explicit change request.
 ```
 
-Every analytical chart should remain readable on desktop and mobile, include units/frequency/source context, and retain `Copy image` / `Download PNG` controls where the surrounding dashboard uses them.
+Every analytical chart should remain readable on desktop and mobile and include units/frequency/source context. Charts have no `Copy image` / `Download PNG` controls (removed by the owner on 2026-10-31); do not reintroduce them unless asked.
 
 ## 7. Policy-rule monitor
 

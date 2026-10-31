@@ -301,7 +301,7 @@ export function SiteFooter() {
       </div>
       <p>
         This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.
-        Macro Data Monitor is an independent research tool and does not provide investment advice.
+        Macro Data Monitor is a personal research tool and does not provide investment advice.
       </p>
     </footer>
   )

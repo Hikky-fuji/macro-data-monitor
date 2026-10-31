@@ -82,12 +82,13 @@ export default function ChangelogPage() {
           </article>
         ))}
         <article className="is-wide about-page__notice">
-          <h2>Feedback and issue history</h2>
+          <h2>Source and change history</h2>
           <p>
-            Reproducible data or display problems can be reported through the{' '}
-            <a href="https://github.com/Hikky-fuji/macro-data-monitor/issues" rel="noreferrer" target="_blank">
-              public GitHub issue tracker ↗
-            </a>.
+            The code and full change history are public in the{' '}
+            <a href="https://github.com/Hikky-fuji/macro-data-monitor" rel="noreferrer" target="_blank">
+              GitHub repository ↗
+            </a>{' '}
+            so the work can be checked.
           </p>
         </article>
       </section>
