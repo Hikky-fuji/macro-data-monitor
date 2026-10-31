@@ -21,8 +21,9 @@ const SOURCES = {
 
 const SOURCE_TIMEOUTS = {
   bojPolicy: 20000,
-  // Both CPI routes (key shared by JP and US) load ~60 series on a cold cache.
+  // CPI routes load 60-70 series on a cold cache (the cpi key is shared by JP and US).
   cpi: 20000,
+  tokyoCpi: 20000,
 }
 
 async function fetchSource(origin, key, path, timeoutMs = 8500) {

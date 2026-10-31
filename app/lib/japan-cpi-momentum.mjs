@@ -68,3 +68,57 @@ export function saMomentum(indexSeries, monthlySeries) {
     annualized6m: annualized(6, 2),
   }
 }
+
+// Descriptive comparison of Tokyo and national Y/Y rates. Tokyo is released
+// about three weeks before the national CPI for the same month, so its latest
+// month usually has no national counterpart yet. Nothing here is a forecast:
+// it reports the current gap, its recent distribution, and how often the two
+// series moved in the same direction month to month.
+export function bridgeStats(tokyoSeries, nationalSeries, { gapWindow = 36, directionWindow = 60 } = {}) {
+  const clean = series => (series || []).filter(point => finite(point.value))
+  const tokyo = clean(tokyoSeries)
+  const national = clean(nationalSeries)
+  const tokyoLatest = tokyo.at(-1)
+  const nationalLatest = national.at(-1)
+  if (!tokyoLatest || !nationalLatest) return null
+
+  const tokyoMap = new Map(tokyo.map(point => [point.date, point.value]))
+  const overlap = national
+    .filter(point => tokyoMap.has(point.date))
+    .map(point => ({ date: point.date, tokyo: tokyoMap.get(point.date), national: point.value }))
+
+  const gaps = overlap.slice(-gapWindow).map(point => point.national - point.tokyo)
+  const gapMean = gaps.length ? gaps.reduce((sum, value) => sum + value, 0) / gaps.length : null
+  const gapSd = gaps.length > 1
+    ? Math.sqrt(gaps.reduce((sum, value) => sum + (value - gapMean) ** 2, 0) / (gaps.length - 1))
+    : null
+
+  let matches = 0
+  let sample = 0
+  const recent = overlap.slice(-(directionWindow + 1))
+  for (let index = 1; index < recent.length; index += 1) {
+    if (shiftMonth(recent[index - 1].date, 1) !== recent[index].date) continue
+    const tokyoMove = recent[index].tokyo - recent[index - 1].tokyo
+    if (Math.abs(tokyoMove) < 1e-9) continue
+    const nationalMove = recent[index].national - recent[index - 1].national
+    sample += 1
+    if (Math.sign(nationalMove) === Math.sign(tokyoMove)) matches += 1
+  }
+
+  const latestOverlap = overlap.at(-1)
+  const tokyoPrevious = tokyo.at(-2)
+  return {
+    tokyoLatest,
+    tokyoChange: tokyoPrevious && shiftMonth(tokyoPrevious.date, 1) === tokyoLatest.date
+      ? tokyoLatest.value - tokyoPrevious.value
+      : null,
+    nationalLatest,
+    tokyoAhead: tokyoLatest.date > nationalLatest.date,
+    gapLatest: latestOverlap ? { date: latestOverlap.date, value: latestOverlap.national - latestOverlap.tokyo } : null,
+    gapMean,
+    gapSd,
+    gapSample: gaps.length,
+    directionMatch: sample ? matches / sample : null,
+    directionSample: sample,
+  }
+}
