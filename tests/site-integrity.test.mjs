@@ -189,7 +189,7 @@ test('Japan CPI routes use the current official base and matching category defin
   const cpiApi = read('app/api/cpi/route.js')
   const tokyoApi = read('app/api/tokyo-cpi/route.js')
   const labourApi = read('app/api/labour/route.js')
-  const page = read('app/cpi/page.js')
+  const page = read('app/components/JapanCpiDashboard.js')
 
   assert.equal(JAPAN_CPI_STATS_ID, '0004052037')
   assert.ok(Math.abs(Object.values(JAPAN_CPI_WEIGHTS).reduce((sum, value) => sum + value, 0) - 10000) <= 5)
@@ -197,9 +197,11 @@ test('Japan CPI routes use the current official base and matching category defin
     assert.match(source, /JAPAN_CPI_STATS_ID/)
     assert.doesNotMatch(source, /0003427113/)
   }
-  assert.match(cpiApi, /key: 'services', cat: '0242', tab: '3'/)
-  assert.match(cpiApi, /key: 'goods_ex_fresh', cat: '0241', tab: '3'/)
-  assert.match(tokyoApi, /area: '13100'/)
+  const cpiSeries = read('app/lib/japan-cpi-series.mjs')
+  assert.match(cpiApi, /JAPAN_CPI_SERIES/)
+  assert.match(cpiSeries, /key: 'services', cat: '0242', tab: '3'/)
+  assert.match(cpiSeries, /key: 'goods_ex_fresh', cat: '0241', tab: '3'/)
+  assert.match(tokyoApi, /TOKYO_AREA = '13100'/)
   assert.doesNotMatch(tokyoApi, /13A01/)
   assert.match(page, /Goods \(ex\. Fresh Food\)/)
   assert.match(page, /2025 Base/)

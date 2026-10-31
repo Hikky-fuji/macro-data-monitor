@@ -1,74 +1,9 @@
 import { fetchEstatMonthly, fetchNamedSeries } from '../../lib/estat.js'
 import { JAPAN_CPI_BASE_YEAR, JAPAN_CPI_STATS_ID, JAPAN_CPI_WEIGHTS } from '../../lib/japan-cpi-config.mjs'
+import { JAPAN_CPI_SERIES } from '../../lib/japan-cpi-series.mjs'
 
 export const revalidate = 21600
 export const dynamic = 'force-dynamic'
-
-// cdTab 3 = y/y %, 2 = m/m %.
-const SERIES = [
-  { key: 'headline', cat: '0001', tab: '3' },
-  { key: 'core', cat: '0161', tab: '3' },
-  { key: 'corecore', cat: '0178', tab: '3' },
-  { key: 'services', cat: '0242', tab: '3' },
-  { key: 'food_ex_fresh', cat: '0172', tab: '3' },
-  { key: 'energy', cat: '0167', tab: '3' },
-  { key: 'goods_ex_fresh', cat: '0241', tab: '3' },
-  { key: 'food', cat: '0002', tab: '3' },
-  { key: 'housing', cat: '0045', tab: '3' },
-  { key: 'utilities', cat: '0054', tab: '3' },
-  { key: 'medical', cat: '0107', tab: '3' },
-  { key: 'transport', cat: '0112', tab: '3' },
-  { key: 'transport_comms', cat: '0111', tab: '3' },
-  { key: 'education', cat: '0118', tab: '3' },
-  { key: 'comms', cat: '0117', tab: '3' },
-  { key: 'leisure', cat: '0122', tab: '3' },
-  { key: 'miscellaneous', cat: '0145', tab: '3' },
-  { key: 'eating_out', cat: '0042', tab: '3' },
-  { key: 'apparel', cat: '0082', tab: '3' },
-  { key: 'furniture', cat: '0060', tab: '3' },
-  { key: 'headline_mm', cat: '0001', tab: '2' },
-  { key: 'core_mm', cat: '0161', tab: '2' },
-  { key: 'corecore_mm', cat: '0178', tab: '2' },
-  { key: 'services_mm', cat: '0242', tab: '2' },
-  { key: 'food_mm', cat: '0172', tab: '2' },
-  { key: 'energy_mm', cat: '0167', tab: '2' },
-  { key: 'goods_mm', cat: '0241', tab: '2' },
-  { key: 'housing_mm', cat: '0045', tab: '2' },
-  { key: 'medical_mm', cat: '0107', tab: '2' },
-  { key: 'transport_mm', cat: '0112', tab: '2' },
-  { key: 'education_mm', cat: '0118', tab: '2' },
-  { key: 'comms_mm', cat: '0117', tab: '2' },
-  { key: 'leisure_mm', cat: '0122', tab: '2' },
-  { key: 'eating_out_mm', cat: '0042', tab: '2' },
-  { key: 'apparel_mm', cat: '0082', tab: '2' },
-  { key: 'furniture_mm', cat: '0060', tab: '2' },
-  { key: 'food_total_mm', cat: '0002', tab: '2' },
-  { key: 'utilities_mm', cat: '0054', tab: '2' },
-  { key: 'transport_comms_mm', cat: '0111', tab: '2' },
-  { key: 'miscellaneous_mm', cat: '0145', tab: '2' },
-  // Total services (incl. imputed rent) pairs with MIC's SA services index.
-  { key: 'services_total', cat: '0220', tab: '3' },
-  // Official seasonally adjusted aggregates: tab 1 = index, tab 2 = m/m %.
-  { key: 'headline_sa', cat: '0901', tab: '1' },
-  { key: 'core_sa', cat: '0902', tab: '1' },
-  { key: 'corecore_sa', cat: '0906', tab: '1' },
-  { key: 'services_sa', cat: '0924', tab: '1' },
-  { key: 'headline_sa_mm', cat: '0901', tab: '2' },
-  { key: 'core_sa_mm', cat: '0902', tab: '2' },
-  { key: 'corecore_sa_mm', cat: '0906', tab: '2' },
-  { key: 'services_sa_mm', cat: '0924', tab: '2' },
-  // Spotlight items: policy-driven prices and household-salience items.
-  ...[
-    ['electricity', '0056'],
-    ['gas', '0057'],
-    ['tuition', '0119'],
-    ['childcare', '9921'],
-    ['mobile', '7430'],
-    ['rice', '0004'],
-    ['private_rent', '0047'],
-    ['accommodation', '0139'],
-  ].flatMap(([key, cat]) => [{ key, cat, tab: '3' }, { key: `${key}_mm`, cat, tab: '2' }]),
-]
 
 export async function GET() {
   const appId = process.env.ESTAT_APP_ID
@@ -76,7 +11,7 @@ export async function GET() {
   let fetched
   try {
     fetched = await fetchNamedSeries(
-      SERIES,
+      JAPAN_CPI_SERIES,
       ({ cat, tab }) => fetchEstatMonthly({ appId, statsDataId: JAPAN_CPI_STATS_ID, area: '00000', cat, tab, revalidate }),
       // ~66 small requests; 12 at a time halves the rounds of a cold refresh.
       { required: ['headline', 'core', 'corecore'], concurrency: 12 },
