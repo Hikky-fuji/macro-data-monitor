@@ -41,3 +41,30 @@ export function momentumSignal(change, threshold = 0.05) {
   if (change < -threshold) return 'Cooling'
   return 'Stable'
 }
+
+function shiftMonth(date, months) {
+  const [year, month] = date.split('/').map(Number)
+  const shifted = new Date(Date.UTC(year, month - 1 + months, 1))
+  return `${shifted.getUTCFullYear()}/${String(shifted.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+// Momentum from MIC's official seasonally adjusted aggregates (published only
+// for headline, core, core-core, goods and services). M/M is the official
+// rate; 3M/6M annualized are derived from the SA index, which MIC rounds to
+// 0.1, so they carry roughly ±0.4pp of rounding noise.
+export function saMomentum(indexSeries, monthlySeries) {
+  const index = new Map((indexSeries || []).filter(point => finite(point.value)).map(point => [point.date, point.value]))
+  const latest = [...index.keys()].sort().at(-1)
+  if (!latest) return {}
+  const annualized = (months, power) => {
+    const base = index.get(shiftMonth(latest, -months))
+    return finite(base) && base !== 0 ? ((index.get(latest) / base) ** power - 1) * 100 : null
+  }
+  const official = (monthlySeries || []).find(point => point.date === latest)
+  return {
+    date: latest,
+    mom: finite(official?.value) ? official.value : null,
+    annualized3m: annualized(3, 4),
+    annualized6m: annualized(6, 2),
+  }
+}

@@ -42,6 +42,32 @@ const SERIES = [
   { key: 'eating_out_mm', cat: '0042', tab: '2' },
   { key: 'apparel_mm', cat: '0082', tab: '2' },
   { key: 'furniture_mm', cat: '0060', tab: '2' },
+  { key: 'food_total_mm', cat: '0002', tab: '2' },
+  { key: 'utilities_mm', cat: '0054', tab: '2' },
+  { key: 'transport_comms_mm', cat: '0111', tab: '2' },
+  { key: 'miscellaneous_mm', cat: '0145', tab: '2' },
+  // Total services (incl. imputed rent) pairs with MIC's SA services index.
+  { key: 'services_total', cat: '0220', tab: '3' },
+  // Official seasonally adjusted aggregates: tab 1 = index, tab 2 = m/m %.
+  { key: 'headline_sa', cat: '0901', tab: '1' },
+  { key: 'core_sa', cat: '0902', tab: '1' },
+  { key: 'corecore_sa', cat: '0906', tab: '1' },
+  { key: 'services_sa', cat: '0924', tab: '1' },
+  { key: 'headline_sa_mm', cat: '0901', tab: '2' },
+  { key: 'core_sa_mm', cat: '0902', tab: '2' },
+  { key: 'corecore_sa_mm', cat: '0906', tab: '2' },
+  { key: 'services_sa_mm', cat: '0924', tab: '2' },
+  // Spotlight items: policy-driven prices and household-salience items.
+  ...[
+    ['electricity', '0056'],
+    ['gas', '0057'],
+    ['tuition', '0119'],
+    ['childcare', '9921'],
+    ['mobile', '7430'],
+    ['rice', '0004'],
+    ['private_rent', '0047'],
+    ['accommodation', '0139'],
+  ].flatMap(([key, cat]) => [{ key, cat, tab: '3' }, { key: `${key}_mm`, cat, tab: '2' }]),
 ]
 
 export async function GET() {
@@ -52,7 +78,8 @@ export async function GET() {
     fetched = await fetchNamedSeries(
       SERIES,
       ({ cat, tab }) => fetchEstatMonthly({ appId, statsDataId: JAPAN_CPI_STATS_ID, area: '00000', cat, tab, revalidate }),
-      { required: ['headline', 'core', 'corecore'] },
+      // ~66 small requests; 12 at a time halves the rounds of a cold refresh.
+      { required: ['headline', 'core', 'corecore'], concurrency: 12 },
     )
   } catch (error) {
     console.error('[CPI]', error)
