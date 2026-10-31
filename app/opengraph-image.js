@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
+import { SITE_HOST } from './lib/site.mjs'
 
-export const alt = 'JapanPulse Macro Workspace'
+export const alt = 'Macro Data Monitor'
 export const size = {
   width: 1200,
   height: 630,
@@ -37,10 +38,10 @@ export default function Image() {
               fontWeight: 800,
             }}
           >
-            JP
+            MD
           </div>
           <div style={{ display: 'flex', fontSize: 28, fontWeight: 700 }}>
-            JapanPulse Macro Workspace
+            Macro Data Monitor
           </div>
         </div>
 
@@ -55,7 +56,7 @@ export default function Image() {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b9c0c4', fontSize: 20 }}>
           <div style={{ display: 'flex' }}>Inflation · Growth · Labor · Consumption · Policy</div>
-          <div style={{ display: 'flex', color: '#6abf91' }}>japanpulse.vercel.app</div>
+          <div style={{ display: 'flex', color: '#6abf91' }}>{SITE_HOST}</div>
         </div>
       </div>
     ),

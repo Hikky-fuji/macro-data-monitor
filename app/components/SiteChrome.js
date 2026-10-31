@@ -154,7 +154,7 @@ function ShareControl({ onComplete }) {
   const sharePage = async () => {
     const shareData = {
       title: document.title,
-      text: 'JapanPulse macro dashboard',
+      text: 'Macro Data Monitor',
       url: window.location.href,
     }
 
@@ -197,9 +197,9 @@ export function SiteHeader() {
     <header className="terminal-header">
       <div className="terminal-header__main">
         <Link className="terminal-brand" href="/">
-          <span className="terminal-brand__mark">JP</span>
+          <span className="terminal-brand__mark">MD</span>
           <span className="terminal-brand__name">
-            JapanPulse <span className="terminal-brand__suffix">Workspace</span>
+            Macro Data <span className="terminal-brand__suffix">Monitor</span>
           </span>
         </Link>
         <button
@@ -293,17 +293,17 @@ export function SiteFooter() {
   return (
     <footer className="terminal-footer">
       <div className="terminal-footer__topline">
-        <span>JapanPulse · Macro Data Workspace</span>
+        <span>Macro Data Monitor · Official-source data</span>
         <nav aria-label="Site information">
           <Link href="/about">About & Methodology</Link>
           <Link href="/changelog">Changelog</Link>
           <Link href="/status">Data Status</Link>
-          <a href="https://github.com/Hikky-fuji/japanpulse" rel="noreferrer" target="_blank">GitHub ↗</a>
+          <a href="https://github.com/Hikky-fuji/macro-data-monitor" rel="noreferrer" target="_blank">GitHub ↗</a>
         </nav>
       </div>
       <p>
         This product uses the FRED® API but is not endorsed or certified by the Federal Reserve Bank of St. Louis.
-        JapanPulse is an independent research tool and does not provide investment advice.
+        Macro Data Monitor is an independent research tool and does not provide investment advice.
       </p>
     </footer>
   )

@@ -53,7 +53,7 @@ export const INDICATOR_GUIDES = {
     'Tracks manufacturing output and the near-term goods cycle.',
     'Compare production with shipments and inventories to identify restocking or excess supply.',
     'A production recovery supported by shipments is stronger than inventory accumulation alone.',
-    'JapanPulse currently preserves a labeled reference snapshot because the source identifier is unstable.',
+    'Macro Data Monitor currently preserves a labeled reference snapshot because the source identifier is unstable.',
     [{ href: '/tankan', label: 'Tankan' }, { href: '/trade', label: 'Trade' }],
   ),
   '/tsip': guide(

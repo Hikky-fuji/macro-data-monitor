@@ -1,6 +1,6 @@
 export const metadata = {
   title: {
-    absolute: 'US PCE & Consumer | JapanPulse',
+    absolute: 'US PCE & Consumer | Macro Data Monitor',
   },
   description:
     'US PCE inflation, real consumption, disposable income, saving and official price-adjusted restaurant sales dashboard.',

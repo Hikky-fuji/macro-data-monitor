@@ -1,3 +1,5 @@
+import { SITE_URL } from './lib/site.mjs'
+
 export default function robots() {
   return {
     rules: {
@@ -5,7 +7,7 @@ export default function robots() {
       allow: '/',
       disallow: '/api/',
     },
-    sitemap: 'https://japanpulse.vercel.app/sitemap.xml',
-    host: 'https://japanpulse.vercel.app',
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   }
 }

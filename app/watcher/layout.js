@@ -1,5 +1,5 @@
 export const metadata = {
-  title: { absolute: 'Japan Economy Watchers | JapanPulse' },
+  title: { absolute: 'Japan Economy Watchers | Macro Data Monitor' },
   description: 'Japan Economy Watchers current-conditions and outlook sentiment dashboard.',
   alternates: { canonical: '/watcher' },
 }

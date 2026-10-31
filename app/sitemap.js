@@ -1,3 +1,5 @@
+import { SITE_URL } from './lib/site.mjs'
+
 const routes = [
   { path: '/', priority: 1, changeFrequency: 'daily' },
   { path: '/us', priority: 1, changeFrequency: 'daily' },
@@ -39,7 +41,7 @@ const routes = [
 export default function sitemap() {
   const lastModified = new Date()
   return routes.map(route => ({
-    url: `https://japanpulse.vercel.app${route.path}`,
+    url: `${SITE_URL}${route.path}`,
     lastModified,
     changeFrequency: route.changeFrequency,
     priority: route.priority,

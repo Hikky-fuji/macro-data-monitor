@@ -3,7 +3,7 @@ import Link from 'next/link'
 export const metadata = {
   title: 'About & Methodology',
   description:
-    'JapanPulse purpose, data sources, update methodology, limitations, attribution and research disclaimer.',
+    'Macro Data Monitor purpose, data sources, update methodology, limitations, attribution and research disclaimer.',
   alternates: {
     canonical: '/about',
   },
@@ -16,14 +16,14 @@ export default function AboutPage() {
         <div className="about-page__eyebrow">ABOUT / METHODOLOGY</div>
         <h1>Built to make macro data faster to read.</h1>
         <p>
-          JapanPulse is an independent research workspace that brings Japan and United States
+          Macro Data Monitor is an independent research workspace that brings Japan and United States
           macroeconomic indicators into a consistent, high-density dashboard. It is designed
           for monitoring direction, momentum and cross-indicator context—not for replacing
           the underlying official releases.
         </p>
         <p>
           Japanese economic statistics are fragmented across multiple government agencies and
-          can be difficult to navigate, especially for non-Japanese users. JapanPulse consolidates
+          can be difficult to navigate, especially for non-Japanese users. Macro Data Monitor consolidates
           key indicators, standardizes their presentation and makes Japan’s macro data easier to
           access and interpret while keeping the official source one click away.
         </p>
@@ -140,12 +140,12 @@ export default function AboutPage() {
         <article className="is-wide">
           <h2>Research disclaimer & feedback</h2>
           <p>
-            JapanPulse is provided for informational and educational purposes only. It does not
+            Macro Data Monitor is provided for informational and educational purposes only. It does not
             constitute investment, legal, tax or other professional advice. Verify important
             figures against the linked official release before making decisions.
           </p>
           <div className="about-page__actions">
-            <a href="https://github.com/Hikky-fuji/japanpulse/issues" rel="noreferrer" target="_blank">
+            <a href="https://github.com/Hikky-fuji/macro-data-monitor/issues" rel="noreferrer" target="_blank">
               Report a data or display issue ↗
             </a>
             <Link href="/status">Check data status</Link>

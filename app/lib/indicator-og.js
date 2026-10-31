@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { SITE_HOST } from './site.mjs'
 
 export const OG_SIZE = { width: 1200, height: 630 }
 
@@ -27,8 +28,8 @@ export function createIndicatorOg({ eyebrow, title, subtitle, accent = '#f08a24'
             color: '#181818',
             fontSize: 27,
             fontWeight: 800,
-          }}>JP</div>
-          <div style={{ display: 'flex', fontSize: 28, fontWeight: 700 }}>JapanPulse Macro Workspace</div>
+          }}>MD</div>
+          <div style={{ display: 'flex', fontSize: 28, fontWeight: 700 }}>Macro Data Monitor</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', color: accent, fontSize: 20, letterSpacing: 4 }}>{eyebrow}</div>
@@ -37,7 +38,7 @@ export function createIndicatorOg({ eyebrow, title, subtitle, accent = '#f08a24'
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aeb7bc', fontSize: 20 }}>
           <div style={{ display: 'flex' }}>Official data · transparent methodology</div>
-          <div style={{ display: 'flex', color: '#60d4af' }}>japanpulse.vercel.app</div>
+          <div style={{ display: 'flex', color: '#60d4af' }}>{SITE_HOST}</div>
         </div>
       </div>
     ),

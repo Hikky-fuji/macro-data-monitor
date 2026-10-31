@@ -1,6 +1,6 @@
 export const metadata = {
   title: {
-    absolute: 'US Manufacturing Momentum | JapanPulse',
+    absolute: 'US Manufacturing Momentum | Macro Data Monitor',
   },
   description: 'Empire, Philadelphia Fed and ISM manufacturing survey momentum, sequenced from regional leads to the national anchor.',
   alternates: {

@@ -1,6 +1,7 @@
 import { isCoreApi } from '../app/lib/core-indicators.mjs'
+import { SITE_URL } from '../app/lib/site.mjs'
 
-const baseUrl = (process.env.BASE_URL || 'https://japanpulse.vercel.app').replace(/\/$/, '')
+const baseUrl = (process.env.BASE_URL || SITE_URL).replace(/\/$/, '')
 
 const checks = [
   { path: '/api/cpi', required: ['headline'] },

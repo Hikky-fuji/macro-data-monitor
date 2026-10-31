@@ -356,7 +356,7 @@ export default function USCpiDashboard() {
         <DashboardFreshness data={payload} source="BLS · FRED" />
         <nav className={styles.topbar}>
           <div className={styles.breadcrumb}>
-            <Link href="/">JapanPulse</Link> / <Link href="/us">US Macro</Link> / CPI
+            <Link href="/">Macro Data Monitor</Link> / <Link href="/us">US Macro</Link> / CPI
           </div>
           <Link className={styles.backLink} href="/us">← US dashboard</Link>
         </nav>

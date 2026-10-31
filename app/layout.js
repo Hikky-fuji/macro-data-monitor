@@ -2,40 +2,41 @@ import { Analytics } from "@vercel/analytics/next"
 import ChartTheme from './components/ChartTheme'
 import { SiteFooter, SiteHeader } from './components/SiteChrome'
 import './globals.css'
+import { SITE_URL } from './lib/site.mjs'
 
 const structuredData = {
   '@context': 'https://schema.org',
   '@graph': [
     {
       '@type': 'WebSite',
-      '@id': 'https://japanpulse.vercel.app/#website',
-      name: 'JapanPulse',
-      url: 'https://japanpulse.vercel.app/',
+      '@id': `${SITE_URL}/#website`,
+      name: 'Macro Data Monitor',
+      url: `${SITE_URL}/`,
       description: 'Official-source Japan and US macroeconomic dashboards for fast cross-indicator analysis.',
       inLanguage: ['en', 'ja'],
     },
     {
       '@type': 'DataCatalog',
-      '@id': 'https://japanpulse.vercel.app/#catalog',
-      name: 'JapanPulse Macro Data Workspace',
-      url: 'https://japanpulse.vercel.app/',
+      '@id': `${SITE_URL}/#catalog`,
+      name: 'Macro Data Monitor',
+      url: `${SITE_URL}/`,
       description: 'A curated catalog of Japan and United States macroeconomic dashboards built from official APIs and published datasets.',
       dataset: [
         {
           '@type': 'Dataset',
           name: 'Japan macroeconomic indicators',
-          url: 'https://japanpulse.vercel.app/',
+          url: `${SITE_URL}/`,
           temporalCoverage: '2021/..',
           spatialCoverage: 'Japan',
-          creator: { '@type': 'Organization', name: 'JapanPulse' },
+          creator: { '@type': 'Organization', name: 'Macro Data Monitor' },
         },
         {
           '@type': 'Dataset',
           name: 'United States macroeconomic indicators',
-          url: 'https://japanpulse.vercel.app/us',
+          url: `${SITE_URL}/us`,
           temporalCoverage: '2015/..',
           spatialCoverage: 'United States',
-          creator: { '@type': 'Organization', name: 'JapanPulse' },
+          creator: { '@type': 'Organization', name: 'Macro Data Monitor' },
         },
       ],
     },
@@ -43,13 +44,13 @@ const structuredData = {
 }
 
 export const metadata = {
-  metadataBase: new URL('https://japanpulse.vercel.app'),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: 'JapanPulse Macro Workspace',
-    template: '%s | JapanPulse',
+    default: 'Macro Data Monitor',
+    template: '%s | Macro Data Monitor',
   },
   description: 'Japan and US macroeconomic dashboards with official-source inflation, growth, labor, consumption, survey and policy data.',
-  applicationName: 'JapanPulse',
+  applicationName: 'Macro Data Monitor',
   keywords: [
     'Japan economy',
     'US economy',
@@ -61,18 +62,18 @@ export const metadata = {
     'FRED',
     'e-Stat',
   ],
-  authors: [{ name: 'JapanPulse' }],
-  creator: 'JapanPulse',
+  authors: [{ name: 'Macro Data Monitor' }],
+  creator: 'Macro Data Monitor',
   openGraph: {
     type: 'website',
-    siteName: 'JapanPulse',
-    title: 'JapanPulse Macro Workspace',
+    siteName: 'Macro Data Monitor',
+    title: 'Macro Data Monitor',
     description: 'Track Japan and US macro conditions from official data sources.',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'JapanPulse Macro Workspace' }],
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Macro Data Monitor' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'JapanPulse Macro Workspace',
+    title: 'Macro Data Monitor',
     description: 'Track Japan and US macro conditions from official data sources.',
     images: ['/opengraph-image'],
   },
