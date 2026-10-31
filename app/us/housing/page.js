@@ -126,7 +126,7 @@ export default function UsHousingDashboard() {
 
   return <main className={styles.page}><div className={styles.shell}>
     <DashboardFreshness data={payload} source="Census · HUD · FHFA · FRED" />
-    <nav className={styles.topbar}><Link href="/us">← US Macro Dashboard</Link><span>HOUSING / CONSTRUCTION / FINANCING</span></nav>
+    <nav className={styles.topbar}><Link href="/#united-states">← US Macro Dashboard</Link><span>HOUSING / CONSTRUCTION / FINANCING</span></nav>
     <header className={styles.hero}>
       <div className={styles.eyebrow}>US / HOUSING & REAL ESTATE</div><h1>Housing Cycle Monitor</h1>
       <p>Construction pipeline, single-family and multifamily mix, new-home demand, inventory, mortgage rates and house-price momentum.</p>

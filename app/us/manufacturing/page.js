@@ -363,7 +363,7 @@ export default function ManufacturingMomentumPage() {
         <div className={styles.state}>
           <h1>Manufacturing data unavailable</h1>
           <p>{error}</p>
-          <Link href="/us">Return to US Macro</Link>
+          <Link href="/#united-states">Return to US Macro</Link>
         </div>
       </main>
     )
@@ -385,7 +385,7 @@ export default function ManufacturingMomentumPage() {
       <div className={styles.shell}>
         <DashboardFreshness data={payload} source="NY Fed · Philadelphia Fed · ISM" />
         <div className={styles.topbar}>
-          <Link href="/us">← US Macro Dashboard</Link>
+          <Link href="/#united-states">← US Macro Dashboard</Link>
           <span>NY FED → PHILLY FED → ISM</span>
         </div>
 

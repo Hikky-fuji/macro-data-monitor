@@ -327,7 +327,7 @@ export default function ConsumptionDashboard() {
       <div className={styles.shell}>
         <DashboardFreshness data={payload} source="BEA / Census / BLS · FRED" />
         <nav className={styles.topbar}>
-          <Link href="/us">← US Macro Dashboard</Link>
+          <Link href="/#united-states">← US Macro Dashboard</Link>
           <span>PRICES + PRIVATE CONSUMPTION / MONTHLY</span>
         </nav>
 

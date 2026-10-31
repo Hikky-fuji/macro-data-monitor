@@ -245,7 +245,7 @@ export default function ProducerPriceDashboard() {
       <div className={styles.shell}>
         <DashboardFreshness data={payload} source="BLS · FRED" />
         <nav className={styles.topbar}>
-          <Link href="/us">← US Macro Dashboard</Link>
+          <Link href="/#united-states">← US Macro Dashboard</Link>
           <span>PRICES / PRODUCER PIPELINE / MONTHLY</span>
         </nav>
 

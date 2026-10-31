@@ -9,21 +9,18 @@ import { indicatorGuideForPath } from '../lib/indicator-guides.mjs'
 import { significanceDefinition, significanceForPath } from '../lib/significance'
 
 const NAV_ITEMS = [
-  {
-    href: '/',
-    label: 'Japan',
-    match: path => !path.startsWith('/us') && !['/cpi', '/tokyo-cpi', '/ppi'].includes(path),
-  },
-  { href: '/us', label: 'United States', match: path => path === '/us' || path === '/us-macro' || path === '/us/rates' },
-  { href: '/cpi', label: 'Japan CPI', match: path => path === '/cpi' || path === '/tokyo-cpi' || path === '/ppi' },
-  { href: '/us/cpi', label: 'US Prices', match: path => path === '/us/cpi' || path === '/us/ppi' },
-  { href: '/us/employment', label: 'US Employment', match: path => ['/us/employment', '/us/initial-claims', '/us/jolts'].includes(path) },
+  { href: '/', label: 'Overview', match: path => path === '/' },
+  { href: '/us/cpi', label: 'US Prices', match: path => ['/us/cpi', '/us/ppi', '/us/consumption'].includes(path) },
+  { href: '/us/employment', label: 'US Jobs', match: path => ['/us/employment', '/us/initial-claims', '/us/jolts'].includes(path) },
+  { href: '/us-macro', label: 'Fed & Rates', match: path => path === '/us-macro' || path === '/us/rates' },
+  { href: '/cpi', label: 'Japan Prices', match: path => ['/cpi', '/tokyo-cpi', '/ppi'].includes(path) },
+  { href: '/boj-policy', label: 'BOJ & Wages', match: path => path === '/boj-policy' || path === '/wages' },
   { href: '/status', label: 'Data Status', match: path => path === '/status' },
 ]
 
 const SEARCH_ITEMS = [
   { href: '/status', country: 'OPS', label: 'Data Status & Release Calendar', description: 'Feed freshness, failures and official release dates', keywords: 'health stale failed schedule operations' },
-  { href: '/', country: 'JP', label: 'Japan Macro Workspace', description: 'All Japan indicators and current pulse', keywords: 'overview home' },
+  { href: '/', country: 'ALL', label: 'Overview', description: 'Core US and Japan indicators, feed health and archive', keywords: 'overview home workspace united states japan' },
   { href: '/cpi', country: 'JP', label: 'CPI', description: 'National consumer prices', keywords: 'inflation core core-core' },
   { href: '/tokyo-cpi', country: 'JP', label: 'Tokyo CPI', description: 'Tokyo consumer prices', keywords: 'inflation leading' },
   { href: '/ppi', country: 'JP', label: 'Corporate & Services Prices', description: 'CGPI and SPPI', keywords: 'ppi producer boj inflation' },
@@ -42,7 +39,6 @@ const SEARCH_ITEMS = [
   { href: '/job-ratio', country: 'JP', label: 'Job-to-Applicant Ratio', description: 'Labor demand relative to applicants', keywords: 'jobs openings mhlw' },
   { href: '/trade', country: 'JP', label: 'Trade', description: 'Exports, imports and trade balance', keywords: 'external sector flow map' },
   { href: '/inbound-tourism', country: 'JP', label: 'Inbound Tourism', description: 'Visitor arrivals, spending and accommodation', keywords: 'jnto tourism services exports foreign visitors travel' },
-  { href: '/us', country: 'US', label: 'US Macro Workspace', description: 'All US indicators and current pulse', keywords: 'overview home united states' },
   { href: '/us/cpi', country: 'US', label: 'US CPI', description: 'Headline, core and supercore inflation', keywords: 'prices inflation bls' },
   { href: '/us/ppi', country: 'US', label: 'US PPI', description: 'Producer prices and pipeline inflation', keywords: 'prices inflation producer core final demand bls' },
   { href: '/us/employment', country: 'US', label: 'US Employment', description: 'Payrolls, unemployment and wages', keywords: 'nfp jobs earnings' },
@@ -56,8 +52,10 @@ const SEARCH_ITEMS = [
   { href: '/us-macro', country: 'US', label: 'US Growth & Fed Policy', description: 'GDP, fed funds, FOMC and policy rules', keywords: 'fomc rates monetary policy taylor clarida bullard' },
 ]
 
-const isArchived = item => item.country !== 'OPS' && !['/', '/us'].includes(item.href) && !isCorePage(item.href)
-const ORDERED_SEARCH_ITEMS = [...SEARCH_ITEMS].sort((a, b) => isArchived(a) - isArchived(b))
+const isArchived = item => !['OPS', 'ALL'].includes(item.country) && !isCorePage(item.href)
+const COUNTRY_ORDER = { OPS: 0, ALL: 0, US: 1, JP: 2 }
+const searchRank = item => Number(isArchived(item)) * 10 + COUNTRY_ORDER[item.country]
+const ORDERED_SEARCH_ITEMS = [...SEARCH_ITEMS].sort((a, b) => searchRank(a) - searchRank(b))
 
 function IndicatorSearch() {
   const [open, setOpen] = useState(false)
@@ -113,7 +111,7 @@ function IndicatorSearch() {
             <div className="terminal-search__input-row">
               <span aria-hidden="true">⌕</span>
               <input
-                aria-label="Search all Japan and US indicators"
+                aria-label="Search all US and Japan indicators"
                 onChange={event => setQuery(event.target.value)}
                 placeholder="Search CPI, JOLTS, wages, GDP…"
                 ref={inputRef}
@@ -124,7 +122,7 @@ function IndicatorSearch() {
             </div>
             <div className="terminal-search__meta">
               <span>{results.length} dashboards</span>
-              <span>Japan + United States</span>
+              <span>United States + Japan</span>
             </div>
             <div className="terminal-search__results">
               {results.map(item => (
@@ -199,7 +197,7 @@ export function SiteHeader() {
         <Link className="terminal-brand" href="/">
           <span className="terminal-brand__mark">MD</span>
           <span className="terminal-brand__name">
-            Macro Data <span className="terminal-brand__suffix">Monitor</span>
+            Macro Data Monitor
           </span>
         </Link>
         <button
@@ -239,9 +237,9 @@ export function SiteHeader() {
       <div className="terminal-statusbar">
         <div className="terminal-statusbar__inner">
           <span className="terminal-statusbar__sources">Official data sources</span>
-          <span>Japan · e-Stat / BOJ</span>
           <span>United States · FRED / BLS / BEA</span>
-          <span>Workspace · Macro Monitor</span>
+          <span>Japan · e-Stat / BOJ</span>
+          <span>Core set · 6 US / 4 Japan</span>
         </div>
       </div>
       {significance ? (
