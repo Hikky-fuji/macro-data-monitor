@@ -22,7 +22,10 @@ import {
   differenceSeries,
   familyChanges,
   familyColor,
+  isBenchmarkMonth,
   levelRates,
+  newYorkTimeToUtc,
+  nextRelease,
   monthlyChanges,
   payrollRevisions,
   payrollSummary,
@@ -156,31 +159,51 @@ const scatterLabels = {
   id: 'employmentScatterLabels',
   afterDatasetsDraw(chart) {
     const { ctx } = chart
+    const placed = []
+    const overlaps = box => placed.some(other =>
+      box.left < other.right && box.right > other.left && box.top < other.bottom && box.bottom > other.top)
+    ctx.save()
+    ctx.font = '600 10px Inter, sans-serif'
+    ctx.textBaseline = 'middle'
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = 4
+    ctx.strokeStyle = '#30363a'
+    ctx.fillStyle = '#e6eaec'
     chart.data.datasets.forEach((dataset, datasetIndex) => {
-      chart.getDatasetMeta(datasetIndex).data.forEach((point, index) => {
-        const label = dataset.data[index]?.label
-        if (!label) return
-        const placeLeft = point.x > chart.chartArea.right - 110
-        ctx.save()
-        ctx.font = '600 10px Inter, sans-serif'
-        ctx.textAlign = placeLeft ? 'right' : 'left'
-        ctx.textBaseline = 'middle'
-        ctx.lineJoin = 'round'
-        ctx.lineWidth = 4
-        ctx.strokeStyle = '#30363a'
-        ctx.fillStyle = '#e6eaec'
-        const x = placeLeft ? point.x - 9 : point.x + 9
-        ctx.strokeText(label, x, point.y - 6)
-        ctx.fillText(label, x, point.y - 6)
-        ctx.restore()
-      })
+      chart.getDatasetMeta(datasetIndex).data
+        .map((point, index) => ({ point, label: dataset.data[index]?.label }))
+        .filter(item => item.label)
+        .sort((a, b) => a.point.y - b.point.y)
+        .forEach(({ point, label }) => {
+          const width = ctx.measureText(label).width
+          const placeLeft = point.x > chart.chartArea.right - width - 12
+          const x = placeLeft ? point.x - 9 : point.x + 9
+          const left = placeLeft ? x - width : x
+          // Try above the point first, then step away until the label is clear.
+          const offsets = [-7, 9, -19, 21, -31, 33]
+          const y = point.y + (offsets.find(offset => !overlaps({ left, right: left + width, top: point.y + offset - 6, bottom: point.y + offset + 6 })) ?? -7)
+          placed.push({ left, right: left + width, top: y - 6, bottom: y + 6 })
+          ctx.textAlign = placeLeft ? 'right' : 'left'
+          ctx.strokeText(label, x, y)
+          ctx.fillText(label, x, y)
+        })
     })
+    ctx.restore()
   },
 }
 
 export default function USEmploymentPage() {
   const [payload, setPayload] = useState(null)
   const [error, setError] = useState(null)
+  const [release, setRelease] = useState(null)
+
+  // The next release date is a convenience; the page renders without it.
+  useEffect(() => {
+    fetch('/api/release-calendar')
+      .then(response => response.ok ? response.json() : null)
+      .then(body => setRelease(nextRelease(body?.events, '/us/employment', new Date().toISOString().slice(0, 10))))
+      .catch(() => setRelease(null))
+  }, [])
 
   useEffect(() => {
     fetch('/api/us-employment')
@@ -243,7 +266,7 @@ export default function USEmploymentPage() {
       const leafRows = members.map(sector => sectorRow(sector.key, sector.label, sectors[sector.key], sector.aheId ? sectorAhe[sector.key] : null, family.key))
       if (members.length === 1) return leafRows.map(row => ({ ...row, top: true }))
       return [
-        { ...sectorRow(family.key, family.label, familySeries, family.key === 'goods' ? sectorAhe.goods : null, family.key), top: true },
+        { ...sectorRow(family.key, family.label, familySeries, sectorAhe[family.key] ?? null, family.key), top: true },
         ...leafRows,
       ]
     })
@@ -478,6 +501,11 @@ export default function USEmploymentPage() {
     },
   }
 
+  const releaseTime = release ? newYorkTimeToUtc(release.date) : null
+  const nextReleaseLabel = releaseTime
+    ? `${new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Tokyo' }).format(releaseTime)} JST (8:30 a.m. ET)`
+    : null
+
   const payrollDirection = valid(model.headline.avg3) && valid(model.headline.avg12)
     ? model.headline.avg3 < model.headline.avg12 ? 'slower than' : 'faster than'
     : null
@@ -505,6 +533,7 @@ export default function USEmploymentPage() {
             <span>Monthly · seasonally adjusted</span>
             <span>Updated {new Date(payload.fetchedAt).toLocaleString('en-US')}</span>
             <span>{warnings.length ? `Partial coverage · ${warnings.length} series unavailable` : 'Official feed complete'}</span>
+            {nextReleaseLabel ? <span>Next release: {nextReleaseLabel}</span> : null}
           </div>
         </header>
 
@@ -610,7 +639,7 @@ export default function USEmploymentPage() {
               <p className={styles.panelSub}>
                 {model.revisionVintage
                   ? `Total nonfarm change: previous release (ALFRED vintage ${model.revisionVintage}) versus now`
-                  : 'Previous release vintage unavailable'}
+                  : 'Not shown: no earlier ALFRED vintage ending in the prior month was found in the last eight weeks (for example, after a delayed release).'}
               </p>
               {model.revision ? (
                 <div className={styles.tableWrap}>
@@ -635,8 +664,11 @@ export default function USEmploymentPage() {
                 </div>
               ) : null}
               <p className={styles.chartFootnote}>
-                Private ex health care &amp; social assistance is derived (private minus that industry) to show hiring outside the
-                two sectors that have carried recent gains alongside government.
+                Private ex health care &amp; social assistance is derived: private payrolls minus that industry, so hiring in
+                the rest of the private sector can be read separately.
+                {isBenchmarkMonth(model.headline.date)
+                  ? ' This January report includes the annual benchmark revision, so the revisions above also reflect re-benchmarked levels, not only new sample responses.'
+                  : ''}
               </p>
             </div>
           </div>
@@ -799,6 +831,10 @@ export default function USEmploymentPage() {
                 </tbody>
               </table>
             </div>
+            <p className={styles.chartFootnote}>
+              Earnings for the grouped rows use the BLS series where one exists (goods-producing; trade, transportation &amp; utilities).
+              Other groups are analyst groupings without an official earnings series and show “—”; government earnings are not published in this survey.
+            </p>
           </div>
         </section>
 

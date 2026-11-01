@@ -5,6 +5,9 @@ import {
   SECTORS,
   SECTOR_FAMILIES,
   familyChanges,
+  isBenchmarkMonth,
+  newYorkTimeToUtc,
+  nextRelease,
   levelRates,
   monthlyChanges,
   payrollRevisions,
@@ -121,4 +124,25 @@ test('helpers treat a missing series as empty', () => {
   assert.deepEqual(payrollSummary(null), {})
   assert.deepEqual(rateSummary(null), {})
   assert.deepEqual(monthlyChanges(null), [])
+})
+
+test('New York release time converts across daylight saving', () => {
+  assert.equal(newYorkTimeToUtc('2026-11-06').toISOString(), '2026-11-06T13:30:00.000Z')
+  assert.equal(newYorkTimeToUtc('2026-10-02').toISOString(), '2026-10-02T12:30:00.000Z')
+})
+
+test('next release picks the first matching date on or after today', () => {
+  const events = [
+    { href: '/us/employment', date: '2026-12-04' },
+    { href: '/us/cpi', date: '2026-11-03' },
+    { href: '/us/employment', date: '2026-11-06' },
+    { href: '/us/employment', date: '2026-10-02' },
+  ]
+  assert.equal(nextRelease(events, '/us/employment', '2026-10-31').date, '2026-11-06')
+  assert.equal(nextRelease(events, '/us/employment', '2027-01-01'), null)
+})
+
+test('benchmark month is the January reference month', () => {
+  assert.equal(isBenchmarkMonth('2027-01-01'), true)
+  assert.equal(isBenchmarkMonth('2026-09-01'), false)
 })
