@@ -99,6 +99,7 @@ export async function GET() {
     { group: 'sectors', key: 'goods', id: 'USGOOD' },
     ...SECTORS.map(sector => ({ group: 'sectors', key: sector.key, id: sector.id })),
     { group: 'sectorAhe', key: 'goods', id: 'CES0600000003' },
+    { group: 'sectorAhe', key: 'ttu', id: 'CES4000000003' },  // Trade, transportation & utilities
     ...SECTORS.filter(sector => sector.aheId).map(sector => ({ group: 'sectorAhe', key: sector.key, id: sector.aheId })),
     ...Object.entries(WAGES).map(([key, { id, limit }]) => ({ group: 'wages', key, id, limit })),
     // FOMC Summary of Economic Projections

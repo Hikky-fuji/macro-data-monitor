@@ -158,3 +158,25 @@ export function payrollRevisions(current = [], prior = []) {
   })
   return { months, net: months.every(month => finite(month.revision)) ? months[0].revision + months[1].revision : null }
 }
+
+// UTC instant of a New York wall-clock time (handles daylight saving), e.g.
+// the Employment Situation's standard 8:30 a.m. ET release.
+export function newYorkTimeToUtc(date, time = '08:30') {
+  const [hour, minute] = time.split(':').map(Number)
+  for (const offset of [4, 5]) {
+    const candidate = new Date(`${date}T${String(hour + offset).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00Z`)
+    const local = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(candidate)
+    if (local === time) return candidate
+  }
+  return null
+}
+
+// First scheduled release on or after `today` for a dashboard path.
+export function nextRelease(events = [], href, today) {
+  return events
+    .filter(event => event.href === href && event.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null
+}
+
+// The January report (released in February) carries the annual benchmark revision.
+export const isBenchmarkMonth = date => date?.slice(5, 7) === '01'
