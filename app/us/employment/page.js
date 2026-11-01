@@ -1,757 +1,815 @@
 'use client'
-import React, { useEffect, useState } from 'react'
-import { Line, Bar, Doughnut, Scatter } from 'react-chartjs-2'
-import { DashboardFreshness, DashboardState } from '../../components/DashboardStatus'
+
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { Bar, Line, Scatter } from 'react-chartjs-2'
 import {
+  BarElement,
+  CategoryScale,
   Chart as ChartJS,
-  CategoryScale, LinearScale, PointElement,
-  LineElement, BarElement, ArcElement, Title, Tooltip, Legend,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Tooltip,
 } from 'chart.js'
+import { DashboardFreshness, DashboardState } from '../../components/DashboardStatus'
+import { addMonths } from '../../lib/us-cpi-scenarios.mjs'
+import {
+  SECTORS,
+  SECTOR_FAMILIES,
+  average,
+  differenceSeries,
+  familyChanges,
+  familyColor,
+  levelRates,
+  monthlyChanges,
+  payrollRevisions,
+  payrollSummary,
+  rateSummary,
+  sumSeries,
+} from '../../lib/us-employment-metrics.mjs'
+// US and Japan dashboards share one layout and stylesheet.
+import styles from '../cpi/page.module.css'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend)
+ChartJS.register(BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip)
 
-// Inline plugin: draw sector labels on scatter chart
-const scatterLabelPlugin = {
-  id: 'scatterLabels',
-  afterDatasetsDraw(chart) {
-    const { ctx } = chart
-    chart.data.datasets.forEach((ds, i) => {
-      if (!ds.sectorLabels) return
-      chart.getDatasetMeta(i).data.forEach((pt, j) => {
-        const label = ds.sectorLabels[j]
-        if (!label) return
-        const placeLeft = pt.x > chart.chartArea.right - 105
-        const x = placeLeft ? pt.x - 9 : pt.x + 9
-        const y = pt.y - 7
-        ctx.save()
-        ctx.font = '600 11px sans-serif'
-        ctx.textAlign = placeLeft ? 'right' : 'left'
-        ctx.textBaseline = 'middle'
-        ctx.lineJoin = 'round'
-        ctx.lineWidth = 4
-        ctx.strokeStyle = 'rgba(255,255,255,0.96)'
-        ctx.strokeText(label, x, y)
-        ctx.fillStyle = '#17212B'
-        ctx.fillText(label, x, y)
-        ctx.restore()
-      })
-    })
-  },
+const COLORS = {
+  total: '#e6eaec',
+  u3: '#3987e5',
+  u6: '#d95926',
+  sep: '#c98500',
+  primeLfpr: '#d55181',
+  primeEpop: '#9085e9',
+  ahe: '#3987e5',
+  ahe3m: '#d95926',
+  atlanta: '#199e70',
+  eci: '#c98500',
 }
-ChartJS.register(scatterLabelPlugin)
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const valid = value => Number.isFinite(value)
+const signed = (value, digits = 0, suffix = '') =>
+  valid(value) ? `${value > 0 ? '+' : ''}${value.toFixed(digits)}${suffix}` : '—'
+const percent = (value, digits = 1) => valid(value) ? `${value.toFixed(digits)}%` : '—'
+const thousands = value => signed(value, 0, 'K')
 
-export default function USEmploymentPage() {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState(null)
+function monthLabel(date, includeYear = false) {
+  if (!date) return '—'
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    ...(includeYear ? { year: 'numeric' } : {}),
+    timeZone: 'UTC',
+  }).format(new Date(`${date}T00:00:00Z`))
+}
 
-  useEffect(() => {
-    fetch('/api/us-employment')
-      .then(r => r.json())
-      .then(d => { if (d.error) setError(d.error); else setData(d) })
-      .catch(e => setError(String(e)))
-  }, [])
+const shortMonth = date => new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })
+  .format(new Date(`${date}T00:00:00Z`))
 
-  if (error) return <DashboardState type="error" message={error} />
-  if (!data) return <DashboardState message="Connecting to BLS and FRED data…" />
+function since(observations = [], start) {
+  return observations.filter(point => point.date >= start)
+}
 
-  const { employment, sectors, sectorAhe, sep } = data
-  const { payems, unrate, u6rate, civpart, prime_part, ahe } = employment
+function valuesOn(observations = [], dates) {
+  const map = new Map(observations.map(point => [point.date, point.value]))
+  return dates.map(date => map.get(date) ?? null)
+}
 
-  // ── helpers ──────────────────────────────────────────────────────────
-  const lat    = arr => arr?.length ? arr[arr.length - 1] : null
-  const momDiff = arr => arr?.length >= 2 ? arr[arr.length-1].value - arr[arr.length-2].value : null
-  const momPct  = arr => arr?.length >= 2 ? (arr[arr.length-1].value / arr[arr.length-2].value - 1) * 100 : null
-  const yoyVal  = arr => arr?.length >= 13 ? (arr[arr.length-1].value / arr[arr.length-13].value - 1) * 100 : null
-
-  const fmtK    = v => v != null ? (v >= 0 ? '+' : '') + Math.round(v) + 'K' : '--'
-  const fmtPct  = (v, d = 2) => v != null ? v.toFixed(d) + '%' : '--'
-  const fmtSign = (v, d = 2, sfx = '%') => v != null ? (v >= 0 ? '+' : '') + v.toFixed(d) + sfx : '--'
-  const dc      = v => v == null ? '#888' : v >= 0 ? '#1D9E75' : '#E24B4A'
-  const dcInv   = v => v == null ? '#888' : v <= 0 ? '#1D9E75' : '#E24B4A'
-  const cellClr = v => v == null ? '#888' : v >= 0 ? '#1D9E75' : '#E24B4A'
-  const sepYearEnd = sep?.yearEnd || []
-  const latestSepLongRun = lat(sep?.longRun)
-  const sepLongRunValue = latestSepLongRun?.value ?? null
-  const sepReleaseLabel = latestSepLongRun?.date
-    ? `${MONTH_NAMES[Number(latestSepLongRun.date.slice(5, 7)) - 1]} ${latestSepLongRun.date.slice(0, 4)}`
-    : null
-  const sepDots = sepYearEnd.map(point => ({
-    date: `${point.date.slice(0, 4)}-12`,
-    value: point.value,
-  }))
-
-  // ── 3-month helpers ──────────────────────────────────────────────────
-  const get3mChanges = arr => {
-    if (!arr || arr.length < 4) return [null, null, null]
-    const s = arr.slice(-4)
-    return [s[1].value - s[0].value, s[2].value - s[1].value, s[3].value - s[2].value]
-  }
-  const get3mMoMPct = arr => {
-    if (!arr || arr.length < 4) return [null, null, null]
-    const s = arr.slice(-4)
-    return s.slice(1).map((v, i) => (v.value / s[i].value - 1) * 100)
-  }
-
-  const nfp3months = payems?.length >= 4 ? payems.slice(-4) : []
-  const m3labels   = nfp3months.slice(1).map(v => {
-    const d = new Date(v.date + 'T00:00:00')
-    return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+// Twelve-month change; works for monthly and quarterly series alike.
+function yoySeries(observations = []) {
+  const map = new Map(observations.map(point => [point.date, point.value]))
+  return observations.map(point => {
+    const base = map.get(addMonths(point.date, -12))
+    return { date: point.date, value: valid(base) ? (point.value / base - 1) * 100 : null }
   })
-  const aheMoM3  = get3mMoMPct(ahe)
-  const aheYoY3  = ahe?.length >= 14
-    ? [
-        (ahe[ahe.length-3].value / ahe[ahe.length-15].value - 1) * 100,
-        (ahe[ahe.length-2].value / ahe[ahe.length-14].value - 1) * 100,
-        (ahe[ahe.length-1].value / ahe[ahe.length-13].value - 1) * 100,
-      ]
-    : [null, null, null]
-  const unr3  = unrate?.slice(-3).map(v => v.value)  ?? [null, null, null]
-  const civ3  = civpart?.slice(-3).map(v => v.value) ?? [null, null, null]
+}
 
-  const sectorRows = [
-    { key: 'goods',          label: 'Goods Producing' },
-    { key: 'construction',   label: '  Construction',         indent: true },
-    { key: 'wholesale',      label: '  Wholesale',            indent: true },
-    { key: 'retail',         label: '  Retail Trade',         indent: true },
-    { key: 'transportation', label: '  Transportation',       indent: true },
-    { key: 'utilities',      label: '  Utilities',            indent: true },
-    { key: 'info',           label: '  Information',          indent: true },
-    { key: 'fire',           label: '  Financial',            indent: true },
-    { key: 'pbs',            label: '  Prof. & Bus.',         indent: true },
-    { key: 'ehs',            label: '  Edu & Health',         indent: true },
-    { key: 'lah',            label: '  Leisure & Hosp.',      indent: true },
-    { key: 'govt',           label: 'Government' },
-  ]
-
-  // ── NFP stacked bar: Goods / High Inc Svc / Low Inc Svc / Govt ───────
-  // High Inc Svc = Info + Fire + PBS + Utilities
-  // Low Inc Svc  = Retail + EHS + LAH + Wholesale + Transportation
-  const n = 14  // 14 obs → 13 M/M changes → show last 12
-  const trimLast = arr => arr?.slice(-n) || []
-
-  const addSeries = (keys, len = n) => {
-    const arrays = keys.map(k => trimLast(sectors[k]))
-    const result = []
-    for (let i = 0; i < len; i++) {
-      let sum = 0
-      for (const arr of arrays) sum += (arr[i]?.value ?? 0)
-      result.push({ date: arrays[0]?.[i]?.date ?? '', value: sum })
-    }
-    return result
-  }
-
-  const goodsSum   = addSeries(['goods'])
-  const highSvcSum = addSeries(['info', 'fire', 'pbs', 'utilities'])
-  const lowSvcSum  = addSeries(['retail', 'ehs', 'lah', 'wholesale', 'transportation'])
-  const govtSum    = addSeries(['govt'])
-
-  const momChg12 = arr => arr.slice(1, 14).map((v, i) => v.value - arr[i].value)
-  const stackLbls  = goodsSum.slice(1, 14).map(v => v.date.slice(0, 7))
-  const goodsChg   = momChg12(goodsSum)
-  const highSvcChg = momChg12(highSvcSum)
-  const lowSvcChg  = momChg12(lowSvcSum)
-  const govtChg    = momChg12(govtSum)
-
-  // ── NFP 12M bar (total) ──────────────────────────────────────────────
-  const nfp13   = payems?.length >= 13 ? payems.slice(-13) : []
-  const nfp12Lb = nfp13.slice(1).map(v => v.date.slice(0, 7))
-  const nfp12Vl = nfp13.slice(1).map((v, i) => v.value - nfp13[i].value)
-
-  // ── Sector employment change horizontal bar (latest month) ────────────
-  const barSectorDefs = [
-    { key: 'goods',          label: 'Goods Prod.',      group: 'goods' },
-    { key: 'construction',   label: 'Construction',     group: 'goods' },
-    { key: 'info',           label: 'Information',      group: 'highSvc' },
-    { key: 'fire',           label: 'Financial',        group: 'highSvc' },
-    { key: 'pbs',            label: 'Prof. & Bus.',     group: 'highSvc' },
-    { key: 'utilities',      label: 'Utilities',        group: 'highSvc' },
-    { key: 'wholesale',      label: 'Wholesale',        group: 'lowSvc' },
-    { key: 'retail',         label: 'Retail',           group: 'lowSvc' },
-    { key: 'transportation', label: 'Transport',        group: 'lowSvc' },
-    { key: 'ehs',            label: 'Edu & Health',     group: 'lowSvc' },
-    { key: 'lah',            label: 'Leisure & Hosp.',  group: 'lowSvc' },
-    { key: 'govt',           label: 'Government',       group: 'govt' },
-  ]
-  const groupColors = { goods: '#378ADD', highSvc: '#1D9E75', lowSvc: '#9B59B6', govt: '#F5A623' }
-  const sectorLatestChg = barSectorDefs.map(d => momDiff(sectors[d.key]) ?? 0)
-  const sectorBarColors = barSectorDefs.map(d => {
-    const v = momDiff(sectors[d.key]) ?? 0
-    return v >= 0 ? groupColors[d.group] + 'CC' : 'rgba(226,75,74,0.75)'
+function annualized3mSeries(observations = []) {
+  const map = new Map(observations.map(point => [point.date, point.value]))
+  return observations.map(point => {
+    const base = map.get(addMonths(point.date, -3))
+    return { date: point.date, value: valid(base) ? ((point.value / base) ** 4 - 1) * 100 : null }
   })
+}
 
-  // ── AHE scatter (level $ vs YoY %) ───────────────────────────────────
-  const aheScatterDefs = [
-    { key: 'overall',       label: 'All Private',  color: '#333' },
-    { key: 'goods',         label: 'Goods Prod.',  color: '#378ADD' },
-    { key: 'construction',  label: 'Construction', color: '#378ADD' },
-    { key: 'wholesale',     label: 'Wholesale',    color: '#1D9E75' },
-    { key: 'retail',        label: 'Retail',       color: '#9B59B6' },
-    { key: 'transportation',label: 'Transport',    color: '#9B59B6' },
-    { key: 'utilities',     label: 'Utilities',    color: '#1D9E75' },
-    { key: 'info',          label: 'Information',  color: '#1D9E75' },
-    { key: 'finance',       label: 'Financial',    color: '#1D9E75' },
-    { key: 'professional',  label: 'Prof. Svcs',   color: '#1D9E75' },
-    { key: 'eduHealth',     label: 'Edu & Health', color: '#9B59B6' },
-    { key: 'leisure',       label: 'Leisure & Hosp.', color: '#9B59B6' },
-  ]
-  const scatterPoints = aheScatterDefs
-    .map(d => {
-      const arr = sectorAhe[d.key]
-      const level = lat(arr)?.value
-      const yoy   = yoyVal(arr)
-      if (level == null || yoy == null) return null
-      return { x: level, y: yoy, label: d.label, color: d.color }
-    })
-    .filter(Boolean)
-
-  // ── AHE YoY horizontal bar ────────────────────────────────────────────
-  const aheSectorDefs = [
-    { key: 'overall',       label: 'All Private (CES05)' },
-    { key: 'goods',         label: 'Goods Prod.' },
-    { key: 'construction',  label: 'Construction' },
-    { key: 'wholesale',     label: 'Wholesale' },
-    { key: 'retail',        label: 'Retail' },
-    { key: 'transportation',label: 'Transportation' },
-    { key: 'utilities',     label: 'Utilities' },
-    { key: 'info',          label: 'Information' },
-    { key: 'finance',       label: 'Financial' },
-    { key: 'professional',  label: 'Prof. Services' },
-    { key: 'eduHealth',     label: 'Edu & Health' },
-    { key: 'leisure',       label: 'Leisure & Hosp.' },
-  ]
-  const aheYoYs = aheSectorDefs.map(d => yoyVal(sectorAhe[d.key]) ?? 0)
-
-  // ── Employment by sector donut ────────────────────────────────────────
-  const donutGroups = [
-    { label: 'Goods Producing',   color: '#378ADD', keys: ['goods'] },
-    { label: 'High Income Svc',   color: '#1D9E75', keys: ['info', 'fire', 'pbs', 'utilities'] },
-    { label: 'Low Income Svc',    color: '#9B59B6', keys: ['ehs', 'lah', 'retail', 'wholesale', 'transportation'] },
-    { label: 'Government',        color: '#F5A623', keys: ['govt'] },
-  ]
-  const donutVals = donutGroups.map(g =>
-    g.keys.reduce((sum, k) => sum + (lat(sectors[k])?.value ?? 0), 0)
+function KpiCard({ label, value, unit, metrics, note }) {
+  return (
+    <article className={styles.kpiCard}>
+      <div className={styles.cardLabel}>{label}</div>
+      <div className={styles.kpiTop}>
+        <div className={styles.kpiValue}>{value}</div>
+        <div className={styles.kpiUnit}>{unit}</div>
+      </div>
+      <div className={styles.metricRow}>
+        {metrics.map(([name, metric]) => <div key={name}><span>{name}</span><strong>{metric}</strong></div>)}
+      </div>
+      {note ? <div className={styles.panelSub} style={{ margin: '11px 0 0' }}>{note}</div> : null}
+    </article>
   )
-  const totalEmp = donutVals.reduce((a, b) => a + b, 0)
+}
 
-  // ── Long-term U-3 (post-COVID 2021-01+) + SEP path ──────────────────
-  const unrPostCovid = (unrate || []).filter(v => v.date >= '2021-01-01')
-  const histLabels   = unrPostCovid.map(v => v.date.slice(0, 7))
-
-  // Generate monthly labels through the final year available in the latest SEP.
-  const lastHistDate = histLabels.length ? histLabels[histLabels.length - 1] : '2025-01'
-  const genFutureMonths = (fromYM, toYM) => {
-    const months = []
-    let [y, m] = fromYM.split('-').map(Number)
-    m += 1
-    if (m > 12) { m = 1; y++ }
-    const [ty, tm] = toYM.split('-').map(Number)
-    while (y < ty || (y === ty && m <= tm)) {
-      months.push(`${y}-${String(m).padStart(2, '0')}`)
-      m++; if (m > 12) { m = 1; y++ }
-    }
-    return months
-  }
-  const latestSepDot = lat(sepDots)
-  const forecastEnd = latestSepDot?.date ?? lastHistDate
-  const futureMonths = genFutureMonths(lastHistDate, forecastEnd)
-  const allUnrLabels = [...histLabels, ...futureMonths]
-  const unrLineData  = [...unrPostCovid.map(v => v.value), ...Array(futureMonths.length).fill(null)]
-  const sepLongRunData = allUnrLabels.map(() => sepLongRunValue)
-  const sepDotMap = new Map(sepDots.map(dot => [dot.date, dot.value]))
-  const sepDotData   = allUnrLabels.map(l => {
-    return sepDotMap.get(l) ?? null
-  })
-
-  // ── U-3 vs U-6 (5Y / 60M) ────────────────────────────────────────────
-  const unr60   = unrate?.slice(-60) || []
-  const u6_60   = u6rate?.slice(-60) || []
-  const unr60Lb = unr60.map(v => v.date.slice(0, 7))
-
-  // ── Labor participation long-term (10Y) ───────────────────────────────
-  const civ120   = civpart?.slice(-120) || []
-  const prm120   = prime_part?.slice(-120) || []
-  const civ120Lb = civ120.map(v => v.date.slice(0, 7))
-
-  // ── Cumulative employment since Jan 2022 ─────────────────────────────
-  const refIdx    = payems?.findIndex(v => v.date.slice(0, 7) === '2022-01') ?? -1
-  const cumData   = refIdx >= 0 ? payems.slice(refIdx).map(v => v.value - payems[refIdx].value) : []
-  const cumLabels = refIdx >= 0 ? payems.slice(refIdx).map(v => v.date.slice(0, 7)) : []
-
-  // ── Styles ───────────────────────────────────────────────────────────
-  const s = {
-    wrap:     { maxWidth: '1060px', margin: '0 auto', padding: '24px', fontFamily: 'sans-serif' },
-    header:   { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '12px' },
-    sec:      { fontSize: '11px', fontWeight: '700', color: '#1A56DB', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '10px 0 6px', marginTop: '24px', borderBottom: '2px solid #ddeeff', marginBottom: '14px' },
-    grid4:    { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '12px', marginBottom: '16px' },
-    grid2:    { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' },
-    card:     { background: '#f8f8f6', borderRadius: '10px', padding: '14px 16px' },
-    cardLbl:  { fontSize: '10px', color: '#888', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' },
-    cardVal:  { fontSize: '22px', fontWeight: '600', color: '#111' },
-    cardSub:  { fontSize: '11px', marginTop: '3px' },
-    box:      { background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '16px', marginBottom: '16px' },
-    boxTitle: { fontSize: '13px', fontWeight: '500', marginBottom: '4px', color: '#333' },
-    boxSub:   { fontSize: '10px', color: '#aaa', marginBottom: '10px' },
-    table:    { width: '100%', borderCollapse: 'collapse', fontSize: '12px' },
-    th:       { textAlign: 'right', padding: '5px 10px', color: '#888', fontWeight: '500', borderBottom: '1px solid #eee', fontSize: '11px' },
-    thL:      { textAlign: 'left',  padding: '5px 10px', color: '#888', fontWeight: '500', borderBottom: '1px solid #eee', fontSize: '11px' },
-    td:       { padding: '4px 10px', borderBottom: '1px solid #f5f5f5' },
-    tdR:      { padding: '4px 10px', borderBottom: '1px solid #f5f5f5', textAlign: 'right' },
-  }
-
-  const lineOpts = {
-    responsive: true,
-    plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } },
-    scales:  { y: { ticks: { callback: v => v.toFixed(1) + '%' } } },
-  }
-
-  const nfpBarOpts = {
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => (ctx.parsed.y >= 0 ? '+' : '') + Math.round(ctx.parsed.y) + 'K' } },
-    },
-    scales: { y: { ticks: { callback: v => (v >= 0 ? '+' : '') + Math.round(v) + 'K' } } },
-  }
-
-  const stackedBarOpts = {
-    responsive: true,
-    plugins: {
-      legend:  { position: 'top' },
-      tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => `${ctx.dataset.label}: ${(ctx.parsed.y >= 0 ? '+' : '')}${Math.round(ctx.parsed.y)}K` } },
-    },
-    scales: {
-      x: { stacked: true },
-      y: { stacked: true, ticks: { callback: v => (v >= 0 ? '+' : '') + Math.round(v) + 'K' } },
-    },
-  }
-
-  const hbarEmpOpts = {
-    indexAxis: 'y',
+function chartOptions({ format = value => percent(value, 1), axis = format, stacked = false, indexAxis = 'x' } = {}) {
+  const valueAxis = indexAxis === 'y' ? 'x' : 'y'
+  return {
     responsive: true,
     maintainAspectRatio: false,
+    indexAxis,
+    interaction: { mode: 'index', axis: indexAxis, intersect: false },
     plugins: {
-      legend:  { display: false },
-      tooltip: { callbacks: { label: ctx => (ctx.parsed.x >= 0 ? '+' : '') + Math.round(ctx.parsed.x) + 'K' } },
-    },
-    scales: { x: { ticks: { callback: v => (v >= 0 ? '+' : '') + Math.round(v) + 'K' } } },
-  }
-
-  const hbarWageOpts = {
-    indexAxis: 'y',
-    responsive: true,
-    plugins: {
-      legend:  { display: false },
-      tooltip: { callbacks: { label: ctx => ctx.parsed.x.toFixed(2) + '%' } },
-    },
-    scales: {
-      x: {
-        grid: { color: '#4a5258' },
-        ticks: { color: '#e6eaec', font: { size: 12, weight: '600' }, callback: v => v.toFixed(1) + '%' },
+      legend: {
+        position: 'bottom',
+        labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 7, color: '#c7cdd1', font: { size: 10 } },
       },
-      y: {
-        grid: { display: false },
-        ticks: { color: '#f5f7f8', font: { size: 12, weight: '600' } },
-      },
-    },
-  }
-
-  const scatterOpts = {
-    responsive: true,
-    layout: { padding: { top: 14, right: 18, bottom: 4, left: 4 } },
-    plugins: {
-      legend: { display: false },
       tooltip: {
+        backgroundColor: '#142b3c',
+        padding: 10,
         callbacks: {
-          label: ctx => {
-            const pt = ctx.raw
-            return `${pt.label}: $${pt.x.toFixed(2)}/hr · YoY ${pt.y.toFixed(2)}%`
-          },
+          label: context => `${context.dataset.label}: ${format(context.parsed[valueAxis])}`,
         },
       },
     },
     scales: {
       x: {
-        grid: { color: '#4a5258' },
-        title: { display: true, text: 'Avg Hourly Earnings ($)', color: '#f5f7f8', font: { size: 12, weight: '600' } },
-        ticks: { color: '#e6eaec', font: { size: 12, weight: '600' }, callback: v => '$' + v.toFixed(0) },
+        stacked,
+        grid: { display: indexAxis === 'y', color: '#495157' },
+        ticks: { maxTicksLimit: 12, color: '#bac1c6', font: { size: 9 }, ...(indexAxis === 'y' ? { callback: value => axis(value) } : {}) },
       },
       y: {
-        grid: { color: '#4a5258' },
-        title: { display: true, text: 'AHE YoY (%)', color: '#f5f7f8', font: { size: 12, weight: '600' } },
-        ticks: { color: '#e6eaec', font: { size: 12, weight: '600' }, callback: v => v.toFixed(1) + '%' },
+        stacked,
+        grid: { display: indexAxis !== 'y', color: '#495157' },
+        ticks: { color: '#bac1c6', font: { size: 9 }, ...(indexAxis === 'y' ? {} : { callback: value => axis(value) }) },
       },
     },
   }
+}
 
-  const doughnutOpts = {
-    responsive: true,
-    plugins: {
-      legend: { position: 'right', labels: { font: { size: 11 }, padding: 10 } },
-      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${(ctx.raw / 1000).toFixed(1)}M` } },
-    },
+// Sector names drawn next to scatter points so identity never depends on color alone.
+const scatterLabels = {
+  id: 'employmentScatterLabels',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      chart.getDatasetMeta(datasetIndex).data.forEach((point, index) => {
+        const label = dataset.data[index]?.label
+        if (!label) return
+        const placeLeft = point.x > chart.chartArea.right - 110
+        ctx.save()
+        ctx.font = '600 10px Inter, sans-serif'
+        ctx.textAlign = placeLeft ? 'right' : 'left'
+        ctx.textBaseline = 'middle'
+        ctx.lineJoin = 'round'
+        ctx.lineWidth = 4
+        ctx.strokeStyle = '#30363a'
+        ctx.fillStyle = '#e6eaec'
+        const x = placeLeft ? point.x - 9 : point.x + 9
+        ctx.strokeText(label, x, point.y - 6)
+        ctx.fillText(label, x, point.y - 6)
+        ctx.restore()
+      })
+    })
+  },
+}
+
+export default function USEmploymentPage() {
+  const [payload, setPayload] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/us-employment')
+      .then(async response => {
+        const body = await response.json()
+        if (!response.ok || body.error) throw new Error(body.error || 'Unable to load employment data.')
+        return body
+      })
+      .then(setPayload)
+      .catch(fetchError => setError(fetchError.message))
+  }, [])
+
+  const model = useMemo(() => {
+    if (!payload) return null
+    const { employment, sectors, sectorAhe, wages = {}, sep = {}, revisions } = payload
+
+    const privateExHealth = differenceSeries(employment.private, employment.healthSocial)
+    const payrollRows = [
+      { label: 'Total nonfarm', id: 'PAYEMS', series: employment.payems },
+      { label: 'Private', id: 'USPRIV', series: employment.private },
+      { label: 'Private ex health care & social assistance', id: 'DERIVED · USPRIV − CES6562000001', series: privateExHealth },
+      { label: 'Health care & social assistance', id: 'CES6562000001', series: employment.healthSocial },
+      { label: 'Government', id: 'USGOVT', series: sectors.govt },
+      { label: 'Temporary help services', id: 'TEMPHELPS', series: employment.tempHelp },
+    ].map(row => ({ ...row, stats: payrollSummary(row.series) }))
+
+    const headline = payrollRows[0].stats
+    const revision = revisions ? payrollRevisions(employment.payems, revisions.payems) : null
+
+    // Stacked payroll changes by family, with the headline 3M average on top.
+    const families = familyChanges(sectors, 13)
+    const stackDates = families.goods.map(point => point.date)
+    const totalChanges = monthlyChanges(employment.payems)
+    const totalMap = new Map(totalChanges.map(point => [point.date, point.value]))
+    const avg3Line = stackDates.map(date => average([0, -1, -2].map(offset => totalMap.get(addMonths(date, offset)))))
+
+    const sectorTotal = sumSeries(SECTORS.map(sector => sectors[sector.key]))
+    const residual = valid(sectorTotal.at(-1)?.value) && valid(headline.level) ? headline.level - sectorTotal.at(-1).value : null
+
+    const sectorRow = (key, label, series, ahe, family) => {
+      const stats = payrollSummary(series)
+      const employmentRates = levelRates(series)
+      const wageRates = levelRates(ahe)
+      return {
+        key,
+        label,
+        family,
+        level: stats.level,
+        share: valid(stats.level) && valid(headline.level) ? stats.level / headline.level * 100 : null,
+        change: stats.change,
+        avg3: stats.avg3,
+        yoy: employmentRates.yoy,
+        ahe: wageRates.level,
+        aheYoy: wageRates.yoy,
+      }
+    }
+    const sectorTable = SECTOR_FAMILIES.flatMap(family => {
+      const members = SECTORS.filter(sector => sector.family === family.key)
+      const familySeries = family.key === 'goods' ? sectors.goods : sumSeries(members.map(sector => sectors[sector.key]))
+      const leafRows = members.map(sector => sectorRow(sector.key, sector.label, sectors[sector.key], sector.aheId ? sectorAhe[sector.key] : null, family.key))
+      if (members.length === 1) return leafRows.map(row => ({ ...row, top: true }))
+      return [
+        { ...sectorRow(family.key, family.label, familySeries, family.key === 'goods' ? sectorAhe.goods : null, family.key), top: true },
+        ...leafRows,
+      ]
+    })
+    const leafRows = sectorTable.filter(row => SECTORS.some(sector => sector.key === row.key))
+
+    const scatterPoints = leafRows
+      .filter(row => valid(row.ahe) && valid(row.aheYoy))
+      .map(row => ({ x: row.ahe, y: row.aheYoy, label: row.label, color: familyColor(row.family) }))
+    const overallWage = levelRates(sectorAhe.overall)
+
+    // Labor supply
+    const unrate = rateSummary(employment.unrate)
+    const unemploymentRows = [
+      { label: 'Unemployment rate (U-3)', id: 'UNRATE', stats: unrate, unit: '%' },
+      { label: 'U-6 underemployment', id: 'U6RATE', stats: rateSummary(employment.u6rate), unit: '%' },
+      { label: 'Sahm rule indicator', id: 'SAHMREALTIME · FRED real-time', stats: rateSummary(employment.sahm), unit: 'pp', digits: 2 },
+      { label: 'Participation rate, 16+', id: 'CIVPART', stats: rateSummary(employment.civpart), unit: '%' },
+      { label: 'Prime-age (25–54) participation', id: 'LNS11300060', stats: rateSummary(employment.prime_part), unit: '%' },
+      { label: 'Prime-age employment rate', id: 'LNS12300060', stats: rateSummary(employment.primeEpop), unit: '%' },
+      { label: 'Long-term unemployed share', id: 'LNS13025703 · 27+ weeks', stats: rateSummary(employment.longTermShare), unit: '%' },
+      { label: 'Median unemployment duration', id: 'UEMPMED', stats: rateSummary(employment.medianDuration), unit: ' wks' },
+      { label: 'Permanent job losers', id: 'LNS13026638', stats: rateSummary(employment.permanentLosers), unit: 'K', digits: 0 },
+    ]
+
+    const sepYearEnd = (sep.yearEnd || []).map(point => ({ date: `${point.date.slice(0, 4)}-12-01`, value: point.value }))
+    const sepLongRun = sep.longRun?.at(-1) ?? null
+    const unrHistory = since(employment.unrate, '2021-01-01')
+    const lastHist = unrHistory.at(-1)?.date
+    const sepEnd = sepYearEnd.at(-1)?.date
+    const futureDates = []
+    if (lastHist && sepEnd) for (let date = addMonths(lastHist, 1); date <= sepEnd; date = addMonths(date, 1)) futureDates.push(date)
+    const unrDates = [...unrHistory.map(point => point.date), ...futureDates]
+
+    const u5Dates = employment.unrate.slice(-60).map(point => point.date)
+    const lfprDates = employment.civpart.slice(-120).map(point => point.date)
+
+    // Wages
+    const ahe = levelRates(employment.ahe)
+    const aheProd = levelRates(employment.aheProd)
+    const eci = levelRates(wages.eci, { periodsPerYear: 4 })
+    const atlanta = rateSummary(wages.atlanta)
+    const hours = levelRates(employment.aggregateHours)
+    const weeklyHours = rateSummary(employment.avgWeeklyHours)
+    const wageDates = since(employment.ahe, '2022-01-01').map(point => point.date)
+    const wageRows = [
+      { label: 'Avg hourly earnings, all private', id: 'CES0500000003', cells: [signed(ahe.change, 2, '%'), percent(ahe.annualized3m, 2), percent(ahe.yoy, 2), percent(ahe.priorYoy, 2)] },
+      { label: 'AHE, production & nonsupervisory', id: 'AHETPI', cells: [signed(aheProd.change, 2, '%'), percent(aheProd.annualized3m, 2), percent(aheProd.yoy, 2), percent(aheProd.priorYoy, 2)] },
+      { label: 'ECI wages & salaries, private', id: `ECIWAG · quarterly · ${eci.date ? `Q${Math.floor(Number(eci.date.slice(5, 7)) / 3) + 1} ${eci.date.slice(0, 4)}` : '—'}`, cells: [`${signed(eci.change, 2, '%')} Q/Q`, '—', percent(eci.yoy, 2), percent(eci.priorYoy, 2)] },
+      { label: 'Atlanta Fed Wage Growth Tracker', id: 'FRBATLWGT3MMAUMHWGO · published 3M avg', cells: ['—', '—', percent(atlanta.value, 1), percent(valid(atlanta.change1m) ? atlanta.value - atlanta.change1m : null, 1)] },
+      { label: 'Aggregate weekly hours index', id: 'AWHI · labor input', cells: [signed(hours.change, 2, '%'), percent(hours.annualized3m, 2), percent(hours.yoy, 2), percent(hours.priorYoy, 2)] },
+    ]
+
+    return {
+      headline,
+      payrollRows,
+      revision,
+      revisionVintage: revisions?.vintageDate ?? null,
+      families,
+      stackDates,
+      avg3Line,
+      residual,
+      sectorTable,
+      leafRows,
+      scatterPoints,
+      overallWage,
+      unrate,
+      unemploymentRows,
+      sahm: rateSummary(employment.sahm),
+      primeEpop: rateSummary(employment.primeEpop),
+      primePart: rateSummary(employment.prime_part),
+      civpart: rateSummary(employment.civpart),
+      u6: rateSummary(employment.u6rate),
+      sepYearEnd,
+      sepLongRun,
+      unrHistory,
+      unrDates,
+      u5Dates,
+      lfprDates,
+      ahe,
+      aheProd,
+      weeklyHours,
+      wageRows,
+      wageDates,
+      eciYoy: yoySeries(wages.eci),
+      atlanta: wages.atlanta || [],
+      employment,
+    }
+  }, [payload])
+
+  if (error) {
+    return (
+      <div className={styles.page}>
+        <DashboardState type="error" message={`${error} The page will recover automatically when the official feed is available.`} />
+      </div>
+    )
   }
 
-  const cumOpts = {
+  if (!model) {
+    return (
+      <div className={styles.page}>
+        <DashboardState message="Fetching the latest Employment Situation series from FRED." />
+      </div>
+    )
+  }
+
+  const { employment } = model
+  const latestMonth = monthLabel(model.headline.date, true)
+  const warnings = payload.meta?.warnings || []
+
+  const stackedData = {
+    labels: model.stackDates.map(shortMonth),
+    datasets: [
+      {
+        type: 'line',
+        label: 'Total nonfarm, 3M average',
+        data: model.avg3Line,
+        borderColor: COLORS.total,
+        backgroundColor: COLORS.total,
+        borderWidth: 2,
+        pointRadius: 2,
+        stack: 'line',
+      },
+      ...SECTOR_FAMILIES.map(family => ({
+        type: 'bar',
+        label: family.label,
+        data: model.families[family.key].map(point => point.value),
+        backgroundColor: family.color,
+        borderColor: '#30363a',
+        borderWidth: 1,
+        stack: 'payrolls',
+      })),
+    ],
+  }
+
+  const sectorBarRows = model.leafRows
+  const sectorBarOptions = chartOptions({ format: thousands, indexAxis: 'y' })
+  sectorBarOptions.plugins.legend = { display: false }
+  const sectorBarData = {
+    labels: sectorBarRows.map(row => row.label),
+    datasets: [{
+      label: '3M average change',
+      data: sectorBarRows.map(row => row.avg3),
+      backgroundColor: sectorBarRows.map(row => familyColor(row.family)),
+      borderRadius: 3,
+    }],
+  }
+
+  const unrData = {
+    labels: model.unrDates.map(shortMonth),
+    datasets: [
+      { label: 'Unemployment rate (U-3)', data: valuesOn(model.unrHistory, model.unrDates), borderColor: COLORS.u3, backgroundColor: COLORS.u3, borderWidth: 2, pointRadius: 0, tension: 0.2 },
+      {
+        label: `FOMC longer-run median${model.sepLongRun ? ` (${model.sepLongRun.value.toFixed(1)}%)` : ''}`,
+        data: model.unrDates.map(() => model.sepLongRun?.value ?? null),
+        borderColor: COLORS.sep,
+        backgroundColor: COLORS.sep,
+        borderDash: [6, 4],
+        borderWidth: 1.5,
+        pointRadius: 0,
+      },
+      {
+        label: 'FOMC Q4 median projection',
+        data: valuesOn(model.sepYearEnd, model.unrDates),
+        borderColor: COLORS.sep,
+        backgroundColor: COLORS.sep,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        showLine: false,
+      },
+    ],
+  }
+
+  const u6Data = {
+    labels: model.u5Dates.map(shortMonth),
+    datasets: [
+      { label: 'U-3', data: valuesOn(employment.unrate, model.u5Dates), borderColor: COLORS.u3, backgroundColor: COLORS.u3, borderWidth: 2, pointRadius: 0 },
+      { label: 'U-6', data: valuesOn(employment.u6rate, model.u5Dates), borderColor: COLORS.u6, backgroundColor: COLORS.u6, borderWidth: 2, pointRadius: 0 },
+    ],
+  }
+
+  const lfprData = {
+    labels: model.lfprDates.map(shortMonth),
+    datasets: [
+      { label: 'Prime-age employment rate', data: valuesOn(employment.primeEpop, model.lfprDates), borderColor: COLORS.primeEpop, backgroundColor: COLORS.primeEpop, borderWidth: 2, pointRadius: 0 },
+      { label: 'Prime-age participation', data: valuesOn(employment.prime_part, model.lfprDates), borderColor: COLORS.primeLfpr, backgroundColor: COLORS.primeLfpr, borderWidth: 2, pointRadius: 0 },
+    ],
+  }
+
+  const wageData = {
+    labels: model.wageDates.map(shortMonth),
+    datasets: [
+      { label: 'AHE Y/Y', data: valuesOn(yoySeries(employment.ahe), model.wageDates), borderColor: COLORS.ahe, backgroundColor: COLORS.ahe, borderWidth: 2, pointRadius: 0 },
+      { label: 'AHE 3M ann.', data: valuesOn(annualized3mSeries(employment.ahe), model.wageDates), borderColor: COLORS.ahe3m, backgroundColor: COLORS.ahe3m, borderWidth: 1.5, pointRadius: 0 },
+      { label: 'Atlanta Fed tracker', data: valuesOn(model.atlanta, model.wageDates), borderColor: COLORS.atlanta, backgroundColor: COLORS.atlanta, borderWidth: 2, pointRadius: 0 },
+      { label: 'ECI wages Y/Y (quarterly)', data: valuesOn(model.eciYoy, model.wageDates), borderColor: COLORS.eci, backgroundColor: COLORS.eci, borderWidth: 2, pointRadius: 3, spanGaps: true },
+    ],
+  }
+
+  const scatterData = {
+    datasets: [{
+      label: 'Sectors',
+      data: model.scatterPoints,
+      pointBackgroundColor: model.scatterPoints.map(point => point.color),
+      pointBorderColor: '#30363a',
+      pointBorderWidth: 2,
+      pointRadius: 6,
+      pointHoverRadius: 8,
+    }],
+  }
+  const scatterOptions = {
     responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: { top: 12, right: 16 } },
     plugins: {
       legend: { display: false },
-      tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => (ctx.parsed.y >= 0 ? '+' : '') + Math.round(ctx.parsed.y) + 'K' } },
-    },
-    scales: { y: { ticks: { callback: v => (v >= 0 ? '+' : '') + (v / 1000).toFixed(1) + 'M' } } },
-  }
-
-  const sepChartOpts = {
-    responsive: true,
-    plugins: {
-      legend:  { position: 'top' },
-      tooltip: { mode: 'index', intersect: false },
+      tooltip: {
+        backgroundColor: '#142b3c',
+        callbacks: { label: context => `${context.raw.label}: $${context.raw.x.toFixed(2)}/hr · Y/Y ${context.raw.y.toFixed(2)}%` },
+      },
     },
     scales: {
+      x: {
+        grid: { color: '#495157' },
+        title: { display: true, text: 'Average hourly earnings ($)', color: '#c7cdd1', font: { size: 10 } },
+        ticks: { color: '#bac1c6', font: { size: 9 }, callback: value => `$${value}` },
+      },
       y: {
-        min: 2,
-        ticks: { callback: v => v.toFixed(1) + '%' },
+        grid: { color: '#495157' },
+        title: { display: true, text: 'Y/Y change (%)', color: '#c7cdd1', font: { size: 10 } },
+        ticks: { color: '#bac1c6', font: { size: 9 }, callback: value => `${value}%` },
       },
     },
   }
 
+  const payrollDirection = valid(model.headline.avg3) && valid(model.headline.avg12)
+    ? model.headline.avg3 < model.headline.avg12 ? 'slower than' : 'faster than'
+    : null
+
   return (
-    <main className="dashboard-page" style={s.wrap}>
-      <DashboardFreshness data={data} source="BLS · FRED" />
-
-      {/* ── Header ── */}
-      <div style={s.header}>
-        <div>
-          <div style={{ fontSize: 12, color: '#aaa', marginBottom: 4 }}>
-            <a href="/" style={{ color: '#aaa', textDecoration: 'none' }}>🇯🇵 Japan</a>
-            {' → '}
-            <a href="/#united-states" style={{ color: '#aaa', textDecoration: 'none' }}>🇺🇸 US</a>
-            {' → Employment'}
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <DashboardFreshness data={payload} source="BLS · FRED" />
+        <nav className={styles.topbar}>
+          <div className={styles.breadcrumb}>
+            <Link href="/">Macro Data Monitor</Link> / <Link href="/#united-states">US Macro</Link> / Employment
           </div>
-          <h1 style={{ fontSize: '18px', fontWeight: '600', color: '#111', margin: 0 }}>US Employment Dashboard</h1>
-          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px' }}>BLS via FRED · SA · Monthly</div>
-        </div>
-        <a href="/#united-states" style={{ fontSize: '12px', color: '#555', textDecoration: 'none' }}>← US Home</a>
-      </div>
+          <Link className={styles.backLink} href="/#united-states">← US dashboard</Link>
+        </nav>
 
-      {/* ── Section 1: Headline KPIs ── */}
-      <div style={s.sec}>Headline</div>
-      <div style={s.grid4}>
-        {[
-          {
-            label: 'NFP M/M Change (SA)',
-            val: fmtK(momDiff(payems)),
-            sub: nfp13.length >= 3 ? 'Prior: ' + fmtK(nfp13[nfp13.length-2].value - nfp13[nfp13.length-3].value) : '',
-            color: dc(momDiff(payems)),
-          },
-          {
-            label: 'Unemployment U-3 (SA)',
-            val: fmtPct(lat(unrate)?.value, 1),
-            sub: unrate?.length >= 2 ? fmtSign(lat(unrate).value - unrate[unrate.length-2].value, 1, 'pp') + ' vs prior' : '',
-            color: dcInv(momDiff(unrate)),
-          },
-          {
-            label: 'Broad Unemployment U-6 (SA)',
-            val: fmtPct(lat(u6rate)?.value, 1),
-            sub: u6rate?.length >= 2 ? fmtSign(lat(u6rate).value - u6rate[u6rate.length-2].value, 1, 'pp') + ' vs prior' : '',
-            color: dcInv(momDiff(u6rate)),
-          },
-          {
-            label: 'AHE YoY — All Private (SA)',
-            val: fmtPct(yoyVal(ahe)),
-            sub: 'M/M: ' + fmtSign(momPct(ahe), 2),
-            color: dc(yoyVal(ahe)),
-          },
-        ].map(k => (
-          <div key={k.label} style={s.card}>
-            <div style={s.cardLbl}>{k.label}</div>
-            <div style={s.cardVal}>{k.val}</div>
-            <div style={{ ...s.cardSub, color: k.color }}>{k.sub}</div>
+        <header className={styles.hero}>
+          <div className={styles.eyebrow}>United States · Labor</div>
+          <h1>Employment Situation</h1>
+          <p>
+            Payroll momentum and revisions, labor supply and slack, wage pressure, and breadth by
+            sector from the BLS Employment Situation, delivered through FRED.
+          </p>
+          <div className={styles.heroMeta}>
+            <span><i className={styles.statusDot} />Latest observation: {latestMonth}</span>
+            <span>Monthly · seasonally adjusted</span>
+            <span>Updated {new Date(payload.fetchedAt).toLocaleString('en-US')}</span>
+            <span>{warnings.length ? `Partial coverage · ${warnings.length} series unavailable` : 'Official feed complete'}</span>
           </div>
-        ))}
-      </div>
+        </header>
 
-      {/* ── Section 2: Highlight Tables ── */}
-      <div style={s.sec}>Establishment Survey — Last 3 Months</div>
-      <div style={s.grid2}>
-        <div style={s.box}>
-          <div style={s.boxTitle}>Employment Change by Sector (K, SA)</div>
-          <div style={s.boxSub}>Level M/M difference · FRED</div>
-          <table style={s.table}>
-            <thead>
-              <tr>
-                <th style={s.thL}>Sector</th>
-                {m3labels.map(m => <th key={m} style={s.th}>{m}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {sectorRows.map(row => {
-                const changes = get3mChanges(sectors[row.key])
-                return (
-                  <tr key={row.key}>
-                    <td style={{ ...s.td, fontWeight: row.indent ? '400' : '600', color: row.indent ? '#555' : '#111' }}>
-                      {row.label}
-                    </td>
-                    {changes.map((v, i) => (
-                      <td key={i} style={{ ...s.tdR, color: cellClr(v), fontWeight: '500' }}>
-                        {v != null ? (v >= 0 ? '+' : '') + Math.round(v) : '--'}
-                      </td>
+        <nav className={styles.sectionNav} aria-label="Employment analysis sections">
+          <a href="#payrolls">Payrolls</a>
+          <a href="#labor-supply">Unemployment &amp; participation</a>
+          <a href="#wages">Wages &amp; hours</a>
+          <a href="#sectors">Sectors</a>
+        </nav>
+
+        <section className={styles.kpiGrid} aria-label="Latest employment readings">
+          <KpiCard
+            label="Nonfarm payrolls"
+            value={thousands(model.headline.change)}
+            unit={`M/M · ${latestMonth}`}
+            metrics={[
+              ['Prior', thousands(model.headline.prior)],
+              ['3M avg', thousands(model.headline.avg3)],
+              ['6M avg', thousands(model.headline.avg6)],
+              ['2M rev.', thousands(model.revision?.net)],
+            ]}
+          />
+          <KpiCard
+            label="Unemployment rate"
+            value={percent(model.unrate.value)}
+            unit={`U-3 · ${monthLabel(model.unrate.date, true)}`}
+            metrics={[
+              ['1M Δ', signed(model.unrate.change1m, 1, 'pp')],
+              ['12M Δ', signed(model.unrate.change12m, 1, 'pp')],
+              ['U-6', percent(model.u6.value)],
+              ['Sahm', signed(model.sahm.value, 2, 'pp')],
+            ]}
+          />
+          <KpiCard
+            label="Prime-age employment rate"
+            value={percent(model.primeEpop.value)}
+            unit={`Ages 25–54 · ${monthLabel(model.primeEpop.date, true)}`}
+            metrics={[
+              ['1M Δ', signed(model.primeEpop.change1m, 1, 'pp')],
+              ['12M Δ', signed(model.primeEpop.change12m, 1, 'pp')],
+              ['Prime LFPR', percent(model.primePart.value)],
+              ['LFPR 16+', percent(model.civpart.value)],
+            ]}
+          />
+          <KpiCard
+            label="Average hourly earnings"
+            value={percent(model.ahe.yoy, 2)}
+            unit={`Y/Y · ${monthLabel(model.ahe.date, true)}`}
+            metrics={[
+              ['M/M', signed(model.ahe.change, 2, '%')],
+              ['3M ann.', percent(model.ahe.annualized3m, 2)],
+              ['Prod. Y/Y', percent(model.aheProd.yoy, 2)],
+              ['Wkly hrs', valid(model.weeklyHours.value) ? model.weeklyHours.value.toFixed(1) : '—'],
+            ]}
+          />
+        </section>
+
+        <section className={styles.section} id="payrolls">
+          <div className={styles.sectionHeader}>
+            <div><div className={styles.sectionKicker}>Payrolls</div><h2>How fast is hiring, and where?</h2></div>
+            <p>
+              {payrollDirection
+                ? `The 3-month average (${thousands(model.headline.avg3)}) is running ${payrollDirection} the 12-month average (${thousands(model.headline.avg12)}).`
+                : 'Establishment survey · thousands of jobs, seasonally adjusted.'}
+            </p>
+          </div>
+          <div className={styles.compositionGrid}>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>Monthly payroll change by supersector</h3>
+              <p className={styles.panelSub}>Thousands · supersectors add up to total nonfarm · line = 3-month average of the headline</p>
+              <div className={styles.contributionChart}>
+                <Bar data={stackedData} options={chartOptions({ format: thousands, stacked: true })} />
+              </div>
+              <p className={styles.chartFootnote}>
+                Colors follow the supersector everywhere on this page.
+                {valid(model.residual) && Math.abs(model.residual) >= 1 ? ` Published sector levels differ from the headline by ${model.residual.toFixed(0)}K because of rounding.` : ''}
+              </p>
+            </div>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>Latest readings</h3>
+              <p className={styles.panelSub}>Monthly change in thousands · {latestMonth}</p>
+              <div className={styles.tableWrap}>
+                <table className={`${styles.table} ${styles.compactTable}`}>
+                  <thead><tr><th>Series</th><th>Latest</th><th>3M avg</th><th>6M avg</th><th>12M avg</th></tr></thead>
+                  <tbody>
+                    {model.payrollRows.map(row => (
+                      <tr key={row.label}>
+                        <td>
+                          <span className={styles.tableName}>{row.label}</span>
+                          <span className={styles.seriesId}>{row.id}</span>
+                        </td>
+                        <td>{thousands(row.stats.change)}</td>
+                        <td>{thousands(row.stats.avg3)}</td>
+                        <td>{thousands(row.stats.avg6)}</td>
+                        <td>{thousands(row.stats.avg12)}</td>
+                      </tr>
                     ))}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={s.box}>
-          <div style={s.boxTitle}>Avg Hourly Earnings (SA)</div>
-          <div style={s.boxSub}>CES0500000003 · FRED</div>
-          <table style={s.table}>
-            <thead>
-              <tr>
-                <th style={s.thL}>Metric</th>
-                {m3labels.map(m => <th key={m} style={s.th}>{m}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ ...s.td, fontWeight: '600' }}>AHE M/M (All Private)</td>
-                {aheMoM3.map((v, i) => (
-                  <td key={i} style={{ ...s.tdR, color: cellClr(v), fontWeight: '600' }}>
-                    {v != null ? fmtSign(v, 2) : '--'}
-                  </td>
-                ))}
-              </tr>
-              <tr>
-                <td style={{ ...s.td, fontWeight: '600' }}>AHE Y/Y (All Private)</td>
-                {aheYoY3.map((v, i) => (
-                  <td key={i} style={{ ...s.tdR, fontWeight: '600' }}>
-                    {v != null ? fmtPct(v) : '--'}
-                  </td>
-                ))}
-              </tr>
-              <tr><td colSpan={4} style={{ ...s.td, padding: '4px 0' }} /></tr>
-              <tr>
-                <td style={{ ...s.td, fontWeight: '600' }}>Unemployment (U-3)</td>
-                {unr3.map((v, i) => <td key={i} style={s.tdR}>{v != null ? v.toFixed(1) + '%' : '--'}</td>)}
-              </tr>
-              <tr>
-                <td style={{ ...s.td, fontWeight: '600' }}>Fed SEP Long-Run Est.</td>
-                {[0,1,2].map(i => (
-                  <td key={i} style={{ ...s.tdR, color: '#D85A30', fontWeight: '500' }}>
-                    {sepLongRunValue != null ? `${sepLongRunValue.toFixed(1)}%` : '--'}
-                  </td>
-                ))}
-              </tr>
-              <tr>
-                <td style={{ ...s.td, fontWeight: '600' }}>Labor Participation</td>
-                {civ3.map((v, i) => <td key={i} style={s.tdR}>{v != null ? v.toFixed(1) + '%' : '--'}</td>)}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Section 3: NFP Stacked Bar by Group ── */}
-      <div style={s.sec}>NFP Change — by Sector Group (Last 12M)</div>
-      <div style={s.box}>
-        <div style={s.boxTitle}>Monthly NFP Change — Goods / High Income Svc / Low Income Svc / Government (K, SA)</div>
-        <div style={s.boxSub}>SA · High Inc Svc = Info + Financial + Prof. + Utilities · Low Inc Svc = Retail + Edu&Health + Leisure + Wholesale + Transport</div>
-        <Bar
-          data={{
-            labels: stackLbls,
-            datasets: [
-              { label: 'Goods Producing', data: goodsChg,   backgroundColor: 'rgba(55,138,221,0.8)',  stack: 'nfp' },
-              { label: 'High Income Svc', data: highSvcChg, backgroundColor: 'rgba(29,158,117,0.8)',  stack: 'nfp' },
-              { label: 'Low Income Svc',  data: lowSvcChg,  backgroundColor: 'rgba(155,89,182,0.8)',  stack: 'nfp' },
-              { label: 'Government',      data: govtChg,    backgroundColor: 'rgba(245,166,35,0.8)',  stack: 'nfp' },
-            ],
-          }}
-          options={stackedBarOpts}
-        />
-      </div>
-
-      {/* ── Section 4: Sector bar + AHE scatter ── */}
-      <div style={s.sec}>Sector Detail — Latest Month</div>
-      <div style={s.grid2}>
-        <div style={s.box}>
-          <div style={s.boxTitle}>Sector Employment Change M/M (K, SA)</div>
-          <div style={s.boxSub}>Blue=Goods · Green=High Inc · Purple=Low Inc · Orange=Govt · Red=negative</div>
-          <div style={{ height: '360px' }}>
-            <Bar
-              data={{
-                labels: barSectorDefs.map(d => d.label),
-                datasets: [{ data: sectorLatestChg, backgroundColor: sectorBarColors }],
-              }}
-              options={hbarEmpOpts}
-            />
+                  </tbody>
+                </table>
+              </div>
+              <h3 className={styles.panelTitle} style={{ marginTop: 18 }}>Revisions to the prior two months</h3>
+              <p className={styles.panelSub}>
+                {model.revisionVintage
+                  ? `Total nonfarm change: previous release (ALFRED vintage ${model.revisionVintage}) versus now`
+                  : 'Previous release vintage unavailable'}
+              </p>
+              {model.revision ? (
+                <div className={styles.tableWrap}>
+                  <table className={`${styles.table} ${styles.compactTable}`}>
+                    <thead><tr><th>Month</th><th>Previous</th><th>Current</th><th>Revision</th></tr></thead>
+                    <tbody>
+                      {model.revision.months.map(month => (
+                        <tr key={month.date}>
+                          <td><span className={styles.tableName}>{monthLabel(month.date, true)}</span></td>
+                          <td>{thousands(month.previous)}</td>
+                          <td>{thousands(month.revised)}</td>
+                          <td>{thousands(month.revision)}</td>
+                        </tr>
+                      ))}
+                      <tr>
+                        <td><span className={styles.tableName}>Net two-month revision</span></td>
+                        <td /><td />
+                        <td><strong>{thousands(model.revision.net)}</strong></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+              <p className={styles.chartFootnote}>
+                Private ex health care &amp; social assistance is derived (private minus that industry) to show hiring outside the
+                two sectors that have carried recent gains alongside government.
+              </p>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div style={s.box}>
-          <div style={s.boxTitle}>AHE Level ($) vs YoY Growth (%) by Sector</div>
-          <div style={s.boxSub}>SA · Hover for sector name · CES series (FRED)</div>
-          <Scatter
-            data={{
-              datasets: [{
-                data: scatterPoints.map(p => ({ x: p.x, y: p.y, label: p.label })),
-                sectorLabels: scatterPoints.map(p => p.label),
-                pointBackgroundColor: scatterPoints.map(p => p.color),
-                pointBorderColor: '#FFFFFF',
-                pointBorderWidth: 2,
-                pointRadius: 7,
-                pointHoverRadius: 9,
-              }],
-            }}
-            options={scatterOpts}
-          />
-        </div>
-      </div>
-
-      {/* ── Section 5: AHE YoY by sector ── */}
-      <div style={s.sec}>Wage Growth by Sector (AHE YoY)</div>
-      <div style={s.box}>
-        <div style={s.boxTitle}>Average Hourly Earnings — Year-over-Year % by Sector (SA)</div>
-        <div style={s.boxSub}>SA · CES sector series (FRED) · YoY calculated client-side</div>
-        <Bar
-          data={{
-            labels: aheSectorDefs.map(d => d.label),
-            datasets: [{
-              data: aheYoYs,
-              backgroundColor: aheYoYs.map(v => v >= 0 ? 'rgba(29,158,117,0.75)' : 'rgba(226,75,74,0.75)'),
-            }],
-          }}
-          options={hbarWageOpts}
-        />
-      </div>
-
-      {/* ── Section 6: Unemployment Long-Term + SEP path ── */}
-      <div style={s.sec}>Unemployment Rate — Long Term</div>
-      <div style={s.box}>
-        <div style={s.boxTitle}>Unemployment Rate U-3 — Post-COVID (2021–) + Fed SEP Path (SA)</div>
-        <div style={s.boxSub}>
-          SA · UNRATE / UNRATEMD / UNRATEMDLR (FRED) · Orange dots = SEP year-end median
-          {sepReleaseLabel ? ` · Updated ${sepReleaseLabel}` : ''}
-          {sepLongRunValue != null ? ` · Dashed = Long-Run ${sepLongRunValue.toFixed(1)}%` : ''}
-        </div>
-        <Line
-          data={{
-            labels: allUnrLabels,
-            datasets: [
-              {
-                label: 'U-3 Unemployment',
-                data: unrLineData,
-                borderColor: '#378ADD', borderWidth: 2, pointRadius: 0, tension: 0.3,
-              },
-              {
-                label: `Fed SEP Long-Run${sepLongRunValue != null ? ` (${sepLongRunValue.toFixed(1)}%)` : ''}`,
-                data: sepLongRunData,
-                borderColor: '#D85A30', borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, tension: 0,
-              },
-              {
-                label: 'SEP Year-End Path',
-                data: sepDotData,
-                borderColor: '#D85A30', backgroundColor: '#D85A30',
-                borderWidth: 0, pointRadius: 8, pointHoverRadius: 10,
-                showLine: false,
-              },
-            ],
-          }}
-          options={sepChartOpts}
-        />
-      </div>
-
-      {/* ── Section 7: U-3 vs U-6 (5Y) ── */}
-      <div style={s.grid2}>
-        <div style={s.box}>
-          <div style={s.boxTitle}>U-3 vs U-6 — 5 Years (SA)</div>
-          <div style={s.boxSub}>SA · UNRATE / U6RATE (FRED)</div>
-          <Line
-            data={{
-              labels: unr60Lb,
-              datasets: [
-                { label: 'U-3 (Headline)', data: unr60.map(v => v.value), borderColor: '#378ADD', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-                { label: 'U-6 (Broad)',    data: u6_60.map(v => v.value), borderColor: '#D85A30', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-              ],
-            }}
-            options={lineOpts}
-          />
-        </div>
-
-        {/* ── Section 8: Labor participation long-term ── */}
-        <div style={s.box}>
-          <div style={s.boxTitle}>Labor Force Participation Rate — 10 Years (SA)</div>
-          <div style={s.boxSub}>SA · CIVPART / LNS11300060 (FRED)</div>
-          <Line
-            data={{
-              labels: civ120Lb,
-              datasets: [
-                { label: 'Overall (16+)',   data: civ120.map(v => v.value), borderColor: '#1D9E75', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-                { label: 'Prime Age 25-54', data: prm120.map(v => v.value), borderColor: '#9B59B6', borderWidth: 2, pointRadius: 0, tension: 0.3 },
-              ],
-            }}
-            options={lineOpts}
-          />
-        </div>
-      </div>
-
-      {/* ── Section 9: Sector donut + Cumulative growth ── */}
-      <div style={s.sec}>Employment Composition &amp; Trend</div>
-      <div style={s.grid2}>
-        <div style={s.box}>
-          <div style={s.boxTitle}>Employment by Sector Group — Latest Month</div>
-          <div style={s.boxSub}>
-            SA · Total: {totalEmp > 0 ? (totalEmp / 1000).toFixed(1) + 'M' : '--'} · Grouped (FRED)
+        <section className={styles.section} id="labor-supply">
+          <div className={styles.sectionHeader}>
+            <div><div className={styles.sectionKicker}>Unemployment &amp; participation</div><h2>How much slack is there?</h2></div>
+            <p>Household survey · seasonally adjusted. FOMC projections are the Summary of Economic Projections medians.</p>
           </div>
-          <Doughnut
-            data={{
-              labels: donutGroups.map(g => g.label),
-              datasets: [{
-                data: donutVals,
-                backgroundColor: donutGroups.map(g => g.color + 'CC'),
-                borderWidth: 2,
-                borderColor: '#fff',
-              }],
-            }}
-            options={doughnutOpts}
-          />
-        </div>
+          <div className={styles.compositionGrid}>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>Unemployment rate and FOMC projections</h3>
+              <p className={styles.panelSub}>
+                UNRATE, UNRATEMD, UNRATEMDLR · January 2021 to the last projection year
+                {model.sepLongRun ? ` · SEP of ${monthLabel(model.sepLongRun.date, true)}` : ''}
+              </p>
+              <div className={styles.chart}>
+                <Line data={unrData} options={chartOptions()} />
+              </div>
+            </div>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>Latest readings</h3>
+              <p className={styles.panelSub}>Level and change in percentage points unless noted</p>
+              <div className={styles.tableWrap}>
+                <table className={`${styles.table} ${styles.compactTable}`}>
+                  <thead><tr><th>Series</th><th>Latest</th><th>1M Δ</th><th>12M Δ</th></tr></thead>
+                  <tbody>
+                    {model.unemploymentRows.map(row => {
+                      const digits = row.digits ?? 1
+                      const unit = row.unit === '%' ? '%' : row.unit
+                      const deltaUnit = row.unit === '%' ? 'pp' : row.unit
+                      return (
+                        <tr key={row.label}>
+                          <td>
+                            <span className={styles.tableName}>{row.label}</span>
+                            <span className={styles.seriesId}>{row.id}</span>
+                          </td>
+                          <td>{valid(row.stats.value) ? `${row.stats.value.toFixed(digits)}${unit}` : '—'}</td>
+                          <td>{signed(row.stats.change1m, digits, deltaUnit)}</td>
+                          <td>{signed(row.stats.change12m, digits, deltaUnit)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className={styles.chartFootnote}>
+                The Sahm indicator is FRED&apos;s real-time series (3-month average unemployment rate minus its 12-month low);
+                readings of 0.50pp or more have historically coincided with recessions. It is a descriptive rule, not a forecast.
+              </p>
+            </div>
+          </div>
+          <div className={styles.equalCol} style={{ marginTop: 14 }}>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>U-3 and U-6</h3>
+              <p className={styles.panelSub}>Percent · last five years</p>
+              <div className={styles.chartSmall}><Line data={u6Data} options={chartOptions()} /></div>
+            </div>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>Prime-age employment and participation</h3>
+              <p className={styles.panelSub}>Percent · last ten years · ages 25–54, less affected by population aging than the 16+ rate</p>
+              <div className={styles.chartSmall}><Line data={lfprData} options={chartOptions()} /></div>
+            </div>
+          </div>
+        </section>
 
-        <div style={s.box}>
-          <div style={s.boxTitle}>Cumulative NFP Growth Since January 2022 (K, SA)</div>
-          <div style={s.boxSub}>SA · PAYEMS (FRED) · Base = 0 at Jan 2022</div>
-          {cumData.length > 0 ? (
-            <Line
-              data={{
-                labels: cumLabels,
-                datasets: [{
-                  label: 'Cumulative Change',
-                  data: cumData,
-                  borderColor: '#378ADD',
-                  backgroundColor: 'rgba(55,138,221,0.08)',
-                  borderWidth: 2,
-                  pointRadius: 0,
-                  tension: 0.3,
-                  fill: true,
-                }],
-              }}
-              options={{
-                responsive: true,
-                plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => (ctx.parsed.y >= 0 ? '+' : '') + Math.round(ctx.parsed.y) + 'K' } } },
-                scales:  { y: { ticks: { callback: v => (v >= 0 ? '+' : '') + (v / 1000).toFixed(1) + 'M' } } },
-              }}
-            />
-          ) : (
-            <div style={{ color: '#aaa', fontSize: 13 }}>Not enough data.</div>
-          )}
-        </div>
-      </div>
+        <section className={styles.section} id="wages">
+          <div className={styles.sectionHeader}>
+            <div><div className={styles.sectionKicker}>Wages &amp; hours</div><h2>Is wage pressure easing?</h2></div>
+            <p>Average hourly earnings shift with the mix of jobs; ECI and the Atlanta Fed tracker are less sensitive to that mix.</p>
+          </div>
+          <div className={styles.compositionGrid}>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>Wage growth measures</h3>
+              <p className={styles.panelSub}>Percent · January 2022 to latest · ECI points are quarter-start months</p>
+              <div className={styles.chart}><Line data={wageData} options={chartOptions({ format: value => percent(value, 2) })} /></div>
+            </div>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>Latest readings</h3>
+              <p className={styles.panelSub}>Seasonally adjusted · Atlanta Fed values are published rates</p>
+              <div className={styles.tableWrap}>
+                <table className={`${styles.table} ${styles.compactTable}`}>
+                  <thead><tr><th>Series</th><th>M/M</th><th>3M ann.</th><th>Y/Y</th><th>Prior Y/Y</th></tr></thead>
+                  <tbody>
+                    {model.wageRows.map(row => (
+                      <tr key={row.label}>
+                        <td>
+                          <span className={styles.tableName}>{row.label}</span>
+                          <span className={styles.seriesId}>{row.id}</span>
+                        </td>
+                        {row.cells.map((cell, index) => <td key={index}>{cell}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className={styles.chartFootnote}>
+                Average weekly hours, private: {valid(model.weeklyHours.value) ? `${model.weeklyHours.value.toFixed(1)} hours` : '—'}
+                {valid(model.weeklyHours.change1m) ? ` (${signed(model.weeklyHours.change1m, 1)} vs prior month)` : ''}.
+                Aggregate hours combine jobs and hours, a rough gauge of labor input.
+              </p>
+            </div>
+          </div>
+        </section>
 
-      {/* ── Footer ── */}
-      <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid #eee', fontSize: '11px', color: '#aaa', textAlign: 'center' }}>
-        Data: FRED (Federal Reserve Bank of St. Louis) · BLS · SA · Personal use only
+        <section className={styles.section} id="sectors">
+          <div className={styles.sectionHeader}>
+            <div><div className={styles.sectionKicker}>Sectors</div><h2>Is hiring broad or narrow?</h2></div>
+            <p>BLS industries grouped into supersectors. Information, financial and business services are grouped for readability.</p>
+          </div>
+          <div className={styles.compositionGrid}>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>Payroll change by industry</h3>
+              <p className={styles.panelSub}>3-month average monthly change, thousands · latest month in the table</p>
+              <div className={styles.contributionChart}>
+                <Bar data={sectorBarData} options={sectorBarOptions} />
+              </div>
+            </div>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>Wage level and wage growth by industry</h3>
+              <p className={styles.panelSub}>
+                Average hourly earnings and Y/Y change · all private {valid(model.overallWage.level) ? `$${model.overallWage.level.toFixed(2)}` : '—'}, {percent(model.overallWage.yoy, 2)} · government not covered
+              </p>
+              <div className={styles.contributionChart}>
+                <Scatter data={scatterData} options={scatterOptions} plugins={[scatterLabels]} />
+              </div>
+            </div>
+          </div>
+          <div className={`${styles.panel} ${styles.detailPanel}`}>
+            <div className={styles.tableHead}>
+              <div>
+                <h3 className={styles.panelTitle}>Industry detail</h3>
+                <p className={styles.panelSub}>Employment, monthly change and wages · {latestMonth}</p>
+              </div>
+              <a className={styles.sourceLink} href="https://www.bls.gov/news.release/empsit.t17.htm" target="_blank" rel="noreferrer">BLS Table B-1 ↗</a>
+            </div>
+            <div className={styles.tableWrap}>
+              <table className={`${styles.table} ${styles.categoryTable}`}>
+                <thead>
+                  <tr><th>Industry</th><th>Jobs</th><th>Share</th><th>Latest</th><th>3M avg</th><th>Jobs Y/Y</th><th>AHE</th><th>AHE Y/Y</th></tr>
+                </thead>
+                <tbody>
+                  {model.sectorTable.map(row => (
+                    <tr key={row.key}>
+                      <td style={row.top ? undefined : { paddingLeft: 24 }}>
+                        <span className={styles.categoryName} style={row.top ? undefined : { fontWeight: 500 }}>
+                          <i style={{ backgroundColor: familyColor(row.family) }} />{row.label}
+                        </span>
+                      </td>
+                      <td>{valid(row.level) ? `${(row.level / 1000).toFixed(1)}M` : '—'}</td>
+                      <td>{percent(row.share)}</td>
+                      <td>{thousands(row.change)}</td>
+                      <td>{thousands(row.avg3)}</td>
+                      <td>{signed(row.yoy, 1, '%')}</td>
+                      <td>{valid(row.ahe) ? `$${row.ahe.toFixed(2)}` : '—'}</td>
+                      <td>{percent(row.aheYoy, 1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {warnings.length ? (
+          <div className={styles.notice}>
+            <div className={styles.noticeIcon}>!</div>
+            <div>
+              <strong>Some series are unavailable</strong>
+              <p>{warnings.join(' · ')}. Affected cells show “—”; nothing is filled in.</p>
+            </div>
+          </div>
+        ) : null}
+
+        <footer className={styles.footer}>
+          <div>
+            Source: <a className={styles.sourceLink} href="https://www.bls.gov/news.release/empsit.htm" target="_blank" rel="noreferrer">BLS Employment Situation</a>,
+            {' '}Federal Reserve Bank of Atlanta, FOMC Summary of Economic Projections, via{' '}
+            <a className={styles.sourceLink} href="https://fred.stlouisfed.org/" target="_blank" rel="noreferrer">FRED</a> and ALFRED. Values are revised.
+          </div>
+          <div>Supersector grouping, private ex health care, revisions and wage rates are derived from official observations.</div>
+        </footer>
       </div>
     </main>
   )
