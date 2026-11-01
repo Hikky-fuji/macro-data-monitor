@@ -53,6 +53,14 @@ const signed = (value, digits = 0, suffix = '') =>
 const percent = (value, digits = 1) => valid(value) ? `${value.toFixed(digits)}%` : '—'
 const thousands = value => signed(value, 0, 'K')
 
+// Green when the labor market strengthens, red when it weakens. `invert` is for
+// slack measures (unemployment, duration) where a rise is a weakening. Values
+// that round to zero at the displayed precision stay neutral.
+function tone(value, { digits = 0, invert = false } = {}) {
+  if (!valid(value) || Math.abs(value) < 0.5 * 10 ** -digits) return undefined
+  return (value > 0) !== invert ? styles.cool : styles.hot
+}
+
 function monthLabel(date, includeYear = false) {
   if (!date) return '—'
   return new Intl.DateTimeFormat('en-US', {
@@ -91,16 +99,16 @@ function annualized3mSeries(observations = []) {
   })
 }
 
-function KpiCard({ label, value, unit, metrics, note }) {
+function KpiCard({ label, value, valueClass, unit, metrics, note }) {
   return (
     <article className={styles.kpiCard}>
       <div className={styles.cardLabel}>{label}</div>
       <div className={styles.kpiTop}>
-        <div className={styles.kpiValue}>{value}</div>
+        <div className={`${styles.kpiValue} ${valueClass || ''}`}>{value}</div>
         <div className={styles.kpiUnit}>{unit}</div>
       </div>
       <div className={styles.metricRow}>
-        {metrics.map(([name, metric]) => <div key={name}><span>{name}</span><strong>{metric}</strong></div>)}
+        {metrics.map(([name, metric, className]) => <div key={name}><span>{name}</span><strong className={className}>{metric}</strong></div>)}
       </div>
       {note ? <div className={styles.panelSub} style={{ margin: '11px 0 0' }}>{note}</div> : null}
     </article>
@@ -248,15 +256,15 @@ export default function USEmploymentPage() {
     // Labor supply
     const unrate = rateSummary(employment.unrate)
     const unemploymentRows = [
-      { label: 'Unemployment rate (U-3)', id: 'UNRATE', stats: unrate, unit: '%' },
-      { label: 'U-6 underemployment', id: 'U6RATE', stats: rateSummary(employment.u6rate), unit: '%' },
-      { label: 'Sahm rule indicator', id: 'SAHMREALTIME · FRED real-time', stats: rateSummary(employment.sahm), unit: 'pp', digits: 2 },
+      { label: 'Unemployment rate (U-3)', id: 'UNRATE', stats: unrate, unit: '%', invert: true },
+      { label: 'U-6 underemployment', id: 'U6RATE', stats: rateSummary(employment.u6rate), unit: '%', invert: true },
+      { label: 'Sahm rule indicator', id: 'SAHMREALTIME · FRED real-time', stats: rateSummary(employment.sahm), unit: 'pp', digits: 2, invert: true },
       { label: 'Participation rate, 16+', id: 'CIVPART', stats: rateSummary(employment.civpart), unit: '%' },
       { label: 'Prime-age (25–54) participation', id: 'LNS11300060', stats: rateSummary(employment.prime_part), unit: '%' },
       { label: 'Prime-age employment rate', id: 'LNS12300060', stats: rateSummary(employment.primeEpop), unit: '%' },
-      { label: 'Long-term unemployed share', id: 'LNS13025703 · 27+ weeks', stats: rateSummary(employment.longTermShare), unit: '%' },
-      { label: 'Median unemployment duration', id: 'UEMPMED', stats: rateSummary(employment.medianDuration), unit: ' wks' },
-      { label: 'Permanent job losers', id: 'LNS13026638', stats: rateSummary(employment.permanentLosers), unit: 'K', digits: 0 },
+      { label: 'Long-term unemployed share', id: 'LNS13025703 · 27+ weeks', stats: rateSummary(employment.longTermShare), unit: '%', invert: true },
+      { label: 'Median unemployment duration', id: 'UEMPMED', stats: rateSummary(employment.medianDuration), unit: ' wks', invert: true },
+      { label: 'Permanent job losers', id: 'LNS13026638', stats: rateSummary(employment.permanentLosers), unit: 'K', digits: 0, invert: true },
     ]
 
     const sepYearEnd = (sep.yearEnd || []).map(point => ({ date: `${point.date.slice(0, 4)}-12-01`, value: point.value }))
@@ -280,11 +288,11 @@ export default function USEmploymentPage() {
     const weeklyHours = rateSummary(employment.avgWeeklyHours)
     const wageDates = since(employment.ahe, '2022-01-01').map(point => point.date)
     const wageRows = [
-      { label: 'Avg hourly earnings, all private', id: 'CES0500000003', cells: [signed(ahe.change, 2, '%'), percent(ahe.annualized3m, 2), percent(ahe.yoy, 2), percent(ahe.priorYoy, 2)] },
-      { label: 'AHE, production & nonsupervisory', id: 'AHETPI', cells: [signed(aheProd.change, 2, '%'), percent(aheProd.annualized3m, 2), percent(aheProd.yoy, 2), percent(aheProd.priorYoy, 2)] },
-      { label: 'ECI wages & salaries, private', id: `ECIWAG · quarterly · ${eci.date ? `Q${Math.floor(Number(eci.date.slice(5, 7)) / 3) + 1} ${eci.date.slice(0, 4)}` : '—'}`, cells: [`${signed(eci.change, 2, '%')} Q/Q`, '—', percent(eci.yoy, 2), percent(eci.priorYoy, 2)] },
+      { label: 'Avg hourly earnings, all private', id: 'CES0500000003', cells: [{ text: signed(ahe.change, 2, '%'), className: tone(ahe.change, { digits: 2 }) }, percent(ahe.annualized3m, 2), percent(ahe.yoy, 2), percent(ahe.priorYoy, 2)] },
+      { label: 'AHE, production & nonsupervisory', id: 'AHETPI', cells: [{ text: signed(aheProd.change, 2, '%'), className: tone(aheProd.change, { digits: 2 }) }, percent(aheProd.annualized3m, 2), percent(aheProd.yoy, 2), percent(aheProd.priorYoy, 2)] },
+      { label: 'ECI wages & salaries, private', id: `ECIWAG · quarterly · ${eci.date ? `Q${Math.floor(Number(eci.date.slice(5, 7)) / 3) + 1} ${eci.date.slice(0, 4)}` : '—'}`, cells: [{ text: `${signed(eci.change, 2, '%')} Q/Q`, className: tone(eci.change, { digits: 2 }) }, '—', percent(eci.yoy, 2), percent(eci.priorYoy, 2)] },
       { label: 'Atlanta Fed Wage Growth Tracker', id: 'FRBATLWGT3MMAUMHWGO · published 3M avg', cells: ['—', '—', percent(atlanta.value, 1), percent(valid(atlanta.change1m) ? atlanta.value - atlanta.change1m : null, 1)] },
-      { label: 'Aggregate weekly hours index', id: 'AWHI · labor input', cells: [signed(hours.change, 2, '%'), percent(hours.annualized3m, 2), percent(hours.yoy, 2), percent(hours.priorYoy, 2)] },
+      { label: 'Aggregate weekly hours index', id: 'AWHI · labor input', cells: [{ text: signed(hours.change, 2, '%'), className: tone(hours.change, { digits: 2 }) }, percent(hours.annualized3m, 2), percent(hours.yoy, 2), percent(hours.priorYoy, 2)] },
     ]
 
     return {
@@ -510,12 +518,13 @@ export default function USEmploymentPage() {
           <KpiCard
             label="Nonfarm payrolls"
             value={thousands(model.headline.change)}
+            valueClass={tone(model.headline.change)}
             unit={`M/M · ${latestMonth}`}
             metrics={[
-              ['Prior', thousands(model.headline.prior)],
-              ['3M avg', thousands(model.headline.avg3)],
-              ['6M avg', thousands(model.headline.avg6)],
-              ['2M rev.', thousands(model.revision?.net)],
+              ['Prior', thousands(model.headline.prior), tone(model.headline.prior)],
+              ['3M avg', thousands(model.headline.avg3), tone(model.headline.avg3)],
+              ['6M avg', thousands(model.headline.avg6), tone(model.headline.avg6)],
+              ['2M rev.', thousands(model.revision?.net), tone(model.revision?.net)],
             ]}
           />
           <KpiCard
@@ -523,10 +532,10 @@ export default function USEmploymentPage() {
             value={percent(model.unrate.value)}
             unit={`U-3 · ${monthLabel(model.unrate.date, true)}`}
             metrics={[
-              ['1M Δ', signed(model.unrate.change1m, 1, 'pp')],
-              ['12M Δ', signed(model.unrate.change12m, 1, 'pp')],
+              ['1M Δ', signed(model.unrate.change1m, 1, 'pp'), tone(model.unrate.change1m, { digits: 1, invert: true })],
+              ['12M Δ', signed(model.unrate.change12m, 1, 'pp'), tone(model.unrate.change12m, { digits: 1, invert: true })],
               ['U-6', percent(model.u6.value)],
-              ['Sahm', signed(model.sahm.value, 2, 'pp')],
+              ['Sahm', signed(model.sahm.value, 2, 'pp'), tone(model.sahm.value, { digits: 2, invert: true })],
             ]}
           />
           <KpiCard
@@ -534,8 +543,8 @@ export default function USEmploymentPage() {
             value={percent(model.primeEpop.value)}
             unit={`Ages 25–54 · ${monthLabel(model.primeEpop.date, true)}`}
             metrics={[
-              ['1M Δ', signed(model.primeEpop.change1m, 1, 'pp')],
-              ['12M Δ', signed(model.primeEpop.change12m, 1, 'pp')],
+              ['1M Δ', signed(model.primeEpop.change1m, 1, 'pp'), tone(model.primeEpop.change1m, { digits: 1 })],
+              ['12M Δ', signed(model.primeEpop.change12m, 1, 'pp'), tone(model.primeEpop.change12m, { digits: 1 })],
               ['Prime LFPR', percent(model.primePart.value)],
               ['LFPR 16+', percent(model.civpart.value)],
             ]}
@@ -545,7 +554,7 @@ export default function USEmploymentPage() {
             value={percent(model.ahe.yoy, 2)}
             unit={`Y/Y · ${monthLabel(model.ahe.date, true)}`}
             metrics={[
-              ['M/M', signed(model.ahe.change, 2, '%')],
+              ['M/M', signed(model.ahe.change, 2, '%'), tone(model.ahe.change, { digits: 2 })],
               ['3M ann.', percent(model.ahe.annualized3m, 2)],
               ['Prod. Y/Y', percent(model.aheProd.yoy, 2)],
               ['Wkly hrs', valid(model.weeklyHours.value) ? model.weeklyHours.value.toFixed(1) : '—'],
@@ -587,10 +596,10 @@ export default function USEmploymentPage() {
                           <span className={styles.tableName}>{row.label}</span>
                           <span className={styles.seriesId}>{row.id}</span>
                         </td>
-                        <td>{thousands(row.stats.change)}</td>
-                        <td>{thousands(row.stats.avg3)}</td>
-                        <td>{thousands(row.stats.avg6)}</td>
-                        <td>{thousands(row.stats.avg12)}</td>
+                        <td className={tone(row.stats.change)}>{thousands(row.stats.change)}</td>
+                        <td className={tone(row.stats.avg3)}>{thousands(row.stats.avg3)}</td>
+                        <td className={tone(row.stats.avg6)}>{thousands(row.stats.avg6)}</td>
+                        <td className={tone(row.stats.avg12)}>{thousands(row.stats.avg12)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -610,15 +619,15 @@ export default function USEmploymentPage() {
                       {model.revision.months.map(month => (
                         <tr key={month.date}>
                           <td><span className={styles.tableName}>{monthLabel(month.date, true)}</span></td>
-                          <td>{thousands(month.previous)}</td>
-                          <td>{thousands(month.revised)}</td>
-                          <td>{thousands(month.revision)}</td>
+                          <td className={tone(month.previous)}>{thousands(month.previous)}</td>
+                          <td className={tone(month.revised)}>{thousands(month.revised)}</td>
+                          <td className={tone(month.revision)}>{thousands(month.revision)}</td>
                         </tr>
                       ))}
                       <tr>
                         <td><span className={styles.tableName}>Net two-month revision</span></td>
                         <td /><td />
-                        <td><strong>{thousands(model.revision.net)}</strong></td>
+                        <td className={tone(model.revision.net)}><strong>{thousands(model.revision.net)}</strong></td>
                       </tr>
                     </tbody>
                   </table>
@@ -650,7 +659,7 @@ export default function USEmploymentPage() {
             </div>
             <div className={styles.panel}>
               <h3 className={styles.panelTitle}>Latest readings</h3>
-              <p className={styles.panelSub}>Level and change in percentage points unless noted</p>
+              <p className={styles.panelSub}>Level and change in percentage points unless noted · green = labor market stronger, red = weaker</p>
               <div className={styles.tableWrap}>
                 <table className={`${styles.table} ${styles.compactTable}`}>
                   <thead><tr><th>Series</th><th>Latest</th><th>1M Δ</th><th>12M Δ</th></tr></thead>
@@ -666,8 +675,8 @@ export default function USEmploymentPage() {
                             <span className={styles.seriesId}>{row.id}</span>
                           </td>
                           <td>{valid(row.stats.value) ? `${row.stats.value.toFixed(digits)}${unit}` : '—'}</td>
-                          <td>{signed(row.stats.change1m, digits, deltaUnit)}</td>
-                          <td>{signed(row.stats.change12m, digits, deltaUnit)}</td>
+                          <td className={tone(row.stats.change1m, { digits, invert: row.invert })}>{signed(row.stats.change1m, digits, deltaUnit)}</td>
+                          <td className={tone(row.stats.change12m, { digits, invert: row.invert })}>{signed(row.stats.change12m, digits, deltaUnit)}</td>
                         </tr>
                       )
                     })}
@@ -718,7 +727,7 @@ export default function USEmploymentPage() {
                           <span className={styles.tableName}>{row.label}</span>
                           <span className={styles.seriesId}>{row.id}</span>
                         </td>
-                        {row.cells.map((cell, index) => <td key={index}>{cell}</td>)}
+                        {row.cells.map((cell, index) => <td key={index} className={cell?.className}>{cell?.text ?? cell}</td>)}
                       </tr>
                     ))}
                   </tbody>
@@ -779,9 +788,9 @@ export default function USEmploymentPage() {
                       </td>
                       <td>{valid(row.level) ? `${(row.level / 1000).toFixed(1)}M` : '—'}</td>
                       <td>{percent(row.share)}</td>
-                      <td>{thousands(row.change)}</td>
-                      <td>{thousands(row.avg3)}</td>
-                      <td>{signed(row.yoy, 1, '%')}</td>
+                      <td className={tone(row.change)}>{thousands(row.change)}</td>
+                      <td className={tone(row.avg3)}>{thousands(row.avg3)}</td>
+                      <td className={tone(row.yoy, { digits: 1 })}>{signed(row.yoy, 1, '%')}</td>
                       <td>{valid(row.ahe) ? `$${row.ahe.toFixed(2)}` : '—'}</td>
                       <td>{percent(row.aheYoy, 1)}</td>
                     </tr>
