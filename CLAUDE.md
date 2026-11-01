@@ -74,6 +74,7 @@ principles:
 - Taylor 1993, Balanced Approach, Clarida-CGG proxy, and Bullard Modernized have different assumptions. Preserve their equations, inputs, source links, and caveats.
 - Household-credit transition flows are flows. Do not re-annualize or confuse them with delinquency stocks.
 - Weekly claims interpretation should prioritize the official four-week average over one noisy weekly print.
+- US Employment sectors come from one list (`app/lib/us-employment-metrics.mjs`): 14 BLS industries whose levels sum to total nonfarm (up to rounding), grouped into six supersector families. Each family has one validated color used by every chart and table on the page. Missing observations stay blank; never sum or chart them as zero. Payroll revisions compare the prior two monthly changes with the previous release's ALFRED vintage. "Private ex health care & social assistance" is derived. The Sahm value is FRED's real-time series, shown as a descriptive rule, not a forecast.
 
 ## 2. Technology and repository layout
 
