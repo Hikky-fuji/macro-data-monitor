@@ -31,6 +31,7 @@ import {
 } from '../../lib/us-employment-metrics.mjs'
 // US and Japan dashboards share one layout and stylesheet.
 import styles from '../cpi/page.module.css'
+import layout from './page.module.css'
 
 ChartJS.register(BarElement, CategoryScale, Legend, LinearScale, LineElement, PointElement, Tooltip)
 
@@ -572,10 +573,10 @@ export default function USEmploymentPage() {
             </p>
           </div>
           <div className={styles.compositionGrid}>
-            <div className={styles.panel}>
+            <div className={`${styles.panel} ${layout.chartPanel}`}>
               <h3 className={styles.panelTitle}>Monthly payroll change by supersector</h3>
               <p className={styles.panelSub}>Thousands · supersectors add up to total nonfarm · line = 3-month average of the headline</p>
-              <div className={styles.contributionChart}>
+              <div className={`${layout.fillChart} ${layout.tall}`}>
                 <Bar data={stackedData} options={chartOptions({ format: thousands, stacked: true })} />
               </div>
               <p className={styles.chartFootnote}>
@@ -583,7 +584,7 @@ export default function USEmploymentPage() {
                 {valid(model.residual) && Math.abs(model.residual) >= 1 ? ` Published sector levels differ from the headline by ${model.residual.toFixed(0)}K because of rounding.` : ''}
               </p>
             </div>
-            <div className={styles.panel}>
+            <div className={`${styles.panel} ${layout.tablePanel}`}>
               <h3 className={styles.panelTitle}>Latest readings</h3>
               <p className={styles.panelSub}>Monthly change in thousands · {latestMonth}</p>
               <div className={styles.tableWrap}>
@@ -647,17 +648,17 @@ export default function USEmploymentPage() {
             <p>Household survey · seasonally adjusted. FOMC projections are the Summary of Economic Projections medians.</p>
           </div>
           <div className={styles.compositionGrid}>
-            <div className={styles.panel}>
+            <div className={`${styles.panel} ${layout.chartPanel}`}>
               <h3 className={styles.panelTitle}>Unemployment rate and FOMC projections</h3>
               <p className={styles.panelSub}>
                 UNRATE, UNRATEMD, UNRATEMDLR · January 2021 to the last projection year
                 {model.sepLongRun ? ` · SEP of ${monthLabel(model.sepLongRun.date, true)}` : ''}
               </p>
-              <div className={styles.chart}>
+              <div className={layout.fillChart}>
                 <Line data={unrData} options={chartOptions()} />
               </div>
             </div>
-            <div className={styles.panel}>
+            <div className={`${styles.panel} ${layout.tablePanel}`}>
               <h3 className={styles.panelTitle}>Latest readings</h3>
               <p className={styles.panelSub}>Level and change in percentage points unless noted · green = labor market stronger, red = weaker</p>
               <div className={styles.tableWrap}>
@@ -709,12 +710,12 @@ export default function USEmploymentPage() {
             <p>Average hourly earnings shift with the mix of jobs; ECI and the Atlanta Fed tracker are less sensitive to that mix.</p>
           </div>
           <div className={styles.compositionGrid}>
-            <div className={styles.panel}>
+            <div className={`${styles.panel} ${layout.chartPanel}`}>
               <h3 className={styles.panelTitle}>Wage growth measures</h3>
               <p className={styles.panelSub}>Percent · January 2022 to latest · ECI points are quarter-start months</p>
-              <div className={styles.chart}><Line data={wageData} options={chartOptions({ format: value => percent(value, 2) })} /></div>
+              <div className={layout.fillChart}><Line data={wageData} options={chartOptions({ format: value => percent(value, 2) })} /></div>
             </div>
-            <div className={styles.panel}>
+            <div className={`${styles.panel} ${layout.tablePanel}`}>
               <h3 className={styles.panelTitle}>Latest readings</h3>
               <p className={styles.panelSub}>Seasonally adjusted · Atlanta Fed values are published rates</p>
               <div className={styles.tableWrap}>

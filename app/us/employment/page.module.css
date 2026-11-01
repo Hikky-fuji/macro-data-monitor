@@ -1,0 +1,30 @@
+/* Chart panels that sit beside a readings table stretch to the table's height,
+   and the chart fills the extra space. The doubled class outranks the shared
+   `.compositionGrid > .panel { align-self: start }` rule. When the chart's
+   minimum height is the taller side, the table panel stretches instead. */
+.chartPanel.chartPanel {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.tablePanel.tablePanel {
+  align-self: stretch;
+}
+
+.fillChart {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 330px;
+}
+
+@media (max-width: 600px) {
+  .fillChart {
+    min-height: 285px;
+  }
+}
+
+/* The payroll chart carries a seven-item legend, so it keeps more height when stacked. */
+.fillChart.tall {
+  min-height: 400px;
+}
