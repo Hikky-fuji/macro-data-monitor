@@ -720,6 +720,11 @@ export default function USEmploymentPage() {
               <p className={styles.chartFootnote}>
                 The Sahm indicator is FRED&apos;s real-time series (3-month average unemployment rate minus its 12-month low);
                 readings of 0.50pp or more have historically coincided with recessions. It is a descriptive rule, not a forecast.
+                {!valid(model.unrate.change12m) && model.unrate.date && (
+                  <> 12-month changes are blank for {monthLabel(model.unrate.date, true)} because no household-survey reading was
+                  published for {monthLabel(`${Number(model.unrate.date.slice(0, 4)) - 1}${model.unrate.date.slice(4)}`, true)} (BLS did not
+                  collect October 2025 data during the 2025 lapse in appropriations); they are left blank, not estimated.</>
+                )}
               </p>
             </div>
           </div>

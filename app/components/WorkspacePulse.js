@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { monthlyBlockContributions } from '../lib/us-cpi-scenarios.mjs'
+import { latestYearOverYear, monthlyBlockContributions } from '../lib/us-cpi-scenarios.mjs'
 import { COMPOSITE_DISTRICTS, EARLY_READ_DISTRICTS, districtComposite } from '../lib/regional-ism.mjs'
 
 const last = series => Array.isArray(series) && series.length ? series.at(-1) : null
@@ -481,8 +481,16 @@ function usCards(payload) {
   const { cpi, employment, consumption, manufacturing, macro } = payload
   // BLS publishes CPI 12-month changes from unadjusted indices.
   const nsaOrSa = item => item?.nsa?.observations?.some(point => finite(point.value)) ? item.nsa.observations : item?.observations
-  const headlineCpi = yoyFromIndex(nsaOrSa(cpi?.series?.headline))
-  const coreCpi = yoyFromIndex(nsaOrSa(cpi?.series?.core))
+  // A publication gap (BLS skipped October 2025) blanks the latest Y/Y; show
+  // the last computable month instead, labeled, rather than a failed feed.
+  const headlineYoy = latestYearOverYear(nsaOrSa(cpi?.series?.headline))
+  const coreYoy = latestYearOverYear(nsaOrSa(cpi?.series?.core))
+  const headlineCpi = finite(headlineYoy.value) ? headlineYoy : headlineYoy.fallback || headlineYoy
+  const coreCpi = finite(coreYoy.value) ? coreYoy : coreYoy.fallback || coreYoy
+  const cpiGap = headlineYoy.missingBase
+    ? cpi?.missingPeriods?.find(period => period.date === headlineYoy.missingBase)
+    : null
+  const monthTag = date => date ? ` (${date.slice(0, 7)})` : ''
   const corePce = yoyFromIndex(consumption?.series?.corePce?.observations)
   const realPce = consumption?.series?.realPce?.observations?.filter(item => finite(item.value)) || []
   const saving = last(consumption?.series?.savingRate?.observations?.filter(item => finite(item.value)))
@@ -523,10 +531,14 @@ function usCards(payload) {
       href: '/us/cpi',
       mainLabel: 'Headline CPI YoY',
       value: fixed(headlineCpi.value, 1, '%'),
-      period: headlineCpi.date,
+      period: headlineCpi.date?.slice(0, 7),
       toneName: tone(headlineCpi.value - 2, true),
       details: [
-        detail('Core CPI', fixed(coreCpi.value, 1, '%')),
+        ...(headlineYoy.missingBase ? [detail(
+          `${headlineYoy.date.slice(0, 7)} Y/Y`,
+          cpiGap ? `n/a · no ${headlineYoy.missingBase.slice(0, 7)} index (BLS)` : `n/a · no ${headlineYoy.missingBase.slice(0, 7)} index`,
+        )] : []),
+        detail(`Core CPI${coreYoy.missingBase ? monthTag(coreCpi.date) : ''}`, fixed(coreCpi.value, 1, '%')),
         detail('Core PCE', fixed(corePce.value, 1, '%')),
       ],
       source: 'BLS · FRED',
