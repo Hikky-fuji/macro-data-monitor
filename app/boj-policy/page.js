@@ -59,12 +59,15 @@ function difference(series, distance = 1) {
   return Number.isFinite(current) && Number.isFinite(prior) ? current - prior : null
 }
 
+// Matched by calendar date (works for 'YYYY/MM' and 'YYYY-MM-DD'), so a
+// missing month can never turn this into a 13-month change.
 function indexYoY(series) {
-  if (!Array.isArray(series) || series.length < 13) return null
-  const current = series.at(-1)?.value
-  const prior = series.at(-13)?.value
-  return Number.isFinite(current) && Number.isFinite(prior) && prior !== 0
-    ? (current / prior - 1) * 100
+  const latest = Array.isArray(series) ? series.at(-1) : null
+  if (!latest?.date) return null
+  const target = `${Number(String(latest.date).slice(0, 4)) - 1}${String(latest.date).slice(4)}`
+  const prior = series.find(item => item.date === target)?.value
+  return Number.isFinite(latest.value) && Number.isFinite(prior) && prior !== 0
+    ? (latest.value / prior - 1) * 100
     : null
 }
 

@@ -10,6 +10,7 @@ import {
   scenarioSummary,
   weightedContribution,
   weightedResidual,
+  latestYearOverYear,
 } from '../app/lib/us-cpi-scenarios.mjs'
 
 const closeTo = (actual, expected, tolerance = 1e-8) => {
@@ -145,4 +146,24 @@ test('monthly block contributions use the latest headline month and an implied r
   assert.equal(residual.derived, true)
   closeTo(residual.contribution, 0.4 * 0.607 - (0.4 * 0.353 + 0.3 * 0.069 + 0.6 * 0.063), 1e-9)
   assert.equal(monthlyBlockContributions({}, weights, {}), null)
+})
+
+test('latest year-over-year falls back to the last computable month across a publication gap', () => {
+  const series = [
+    { date: '2025-09-01', value: 324.8 },
+    { date: '2025-10-01', value: null },
+    { date: '2025-11-01', value: 324.1 },
+    { date: '2026-09-01', value: 336.9 },
+    { date: '2026-10-01', value: 337.5 },
+  ]
+  const result = latestYearOverYear(series)
+  assert.equal(result.date, '2026-10-01')
+  assert.equal(result.value, null)
+  assert.equal(result.missingBase, '2025-10-01')
+  assert.equal(result.fallback.date, '2026-09-01')
+  assert.ok(Math.abs(result.fallback.value - (336.9 / 324.8 - 1) * 100) < 1e-9)
+  const normal = latestYearOverYear(series.slice(0, 4))
+  assert.equal(normal.date, '2026-09-01')
+  assert.equal(normal.fallback, null)
+  assert.equal(latestYearOverYear([]).value, null)
 })

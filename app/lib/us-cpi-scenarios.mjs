@@ -71,6 +71,27 @@ export function historicalYoy(observations = [], startDate = '2021-01-01') {
     }))
 }
 
+// Year-over-year change for the latest observation. When its year-ago
+// observation was never published (e.g. BLS's October 2025 gap), the latest
+// month stays blank and `fallback` carries the most recent computable month,
+// so callers can show it labeled instead of reporting a failed feed.
+export function latestYearOverYear(observations = []) {
+  const clean = (observations || []).filter(point => finite(point?.value)).sort((a, b) => a.date.localeCompare(b.date))
+  const values = observationMap(clean)
+  const yoyAt = point => yearOverYear(point.value, values.get(yearAgo(point.date)))
+  const latest = clean.at(-1)
+  if (!latest) return { date: null, value: null, missingBase: null, fallback: null }
+  const value = yoyAt(latest)
+  if (finite(value)) return { date: latest.date, value, missingBase: null, fallback: null }
+  const earlier = [...clean].reverse().find(point => finite(yoyAt(point)))
+  return {
+    date: latest.date,
+    value: null,
+    missingBase: yearAgo(latest.date),
+    fallback: earlier ? { date: earlier.date, value: yoyAt(earlier) } : null,
+  }
+}
+
 export function buildConstantRateScenario(observations = [], monthlyRate, months = 12) {
   const latest = latestObservation(observations)
   if (!latest || !finite(monthlyRate) || months < 1) return null

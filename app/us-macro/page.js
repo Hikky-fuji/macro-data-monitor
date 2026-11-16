@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { Line, Bar } from 'react-chartjs-2'
 import { DashboardFreshness, DashboardState } from '../components/DashboardStatus'
 import { SERIES_COLORS as C } from '../lib/series-colors.mjs'
+import { addMonths, historicalYoy, latestYearOverYear, observationMap, yearOverYear } from '../lib/us-cpi-scenarios.mjs'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -37,19 +38,25 @@ export default function USMacroDashboard() {
   const lat = arr => arr?.length ? arr[arr.length - 1] : null
   const prv = arr => arr?.length > 1 ? arr[arr.length - 2] : null
 
-  const yoyVal = arr => {
-    if (!arr || arr.length < 13) return null
-    return (arr[arr.length - 1].value / arr[arr.length - 13].value - 1) * 100
+  // Year-over-year by calendar date, never by array position: FRED drops
+  // unpublished months (e.g. BLS's October 2025 gap), so "12 rows back"
+  // would silently become a 13-month change.
+  const yoyVal = arr => latestYearOverYear(arr).value
+  const yoyShown = arr => {
+    const result = latestYearOverYear(arr)
+    if (Number.isFinite(result.value)) return { date: result.date, value: result.value, missingBase: null }
+    return { ...(result.fallback || { date: result.date, value: null }), missingBase: result.missingBase, latestDate: result.date }
+  }
+  const yoyBefore = (arr, date) => {
+    if (!date) return null
+    const values = observationMap(arr || [])
+    return yearOverYear(values.get(addMonths(date, -1)), values.get(addMonths(date, -13)))
   }
 
   const yoySeries = arr => {
-    if (!arr || arr.length < 13) return { labels: [], values: [] }
-    const labels = [], values = []
-    for (let i = 12; i < arr.length; i++) {
-      labels.push(arr[i].date.slice(0, 7))
-      values.push((arr[i].value / arr[i - 12].value - 1) * 100)
-    }
-    return { labels, values }
+    if (!arr?.length) return { labels: [], values: [] }
+    const points = historicalYoy(arr, addMonths(arr[0].date, 12))
+    return { labels: points.map(point => point.date.slice(0, 7)), values: points.map(point => point.value) }
   }
 
   const momDiff = arr => {
@@ -115,14 +122,15 @@ export default function USMacroDashboard() {
   }
 
   // ── Inflation ────────────────────────────────────────────────────────
-  const cpiYoY     = yoyVal(inflation.cpi)
-  const coreCpiYoY = yoyVal(inflation.coreCpi)
-  const cpiPrevYoY = inflation.cpi?.length >= 14
-    ? (inflation.cpi[inflation.cpi.length - 2].value / inflation.cpi[inflation.cpi.length - 14].value - 1) * 100
-    : null
-  const corePrevYoY = inflation.coreCpi?.length >= 14
-    ? (inflation.coreCpi[inflation.coreCpi.length - 2].value / inflation.coreCpi[inflation.coreCpi.length - 14].value - 1) * 100
-    : null
+  const cpiShown     = yoyShown(inflation.cpi)
+  const coreCpiShown = yoyShown(inflation.coreCpi)
+  const cpiYoY       = cpiShown.value
+  const coreCpiYoY   = coreCpiShown.value
+  const cpiPrevYoY   = yoyBefore(inflation.cpi, cpiShown.date)
+  const corePrevYoY  = yoyBefore(inflation.coreCpi, coreCpiShown.date)
+  const gapNote = shown => shown.missingBase
+    ? `${shown.date?.slice(0, 7) || '—'} shown · ${shown.latestDate?.slice(0, 7)} Y/Y n/a (no ${shown.missingBase.slice(0, 7)} index)`
+    : ''
 
   const cpiYS     = yoySeries(inflation.cpi)
   const coreCpiYS = yoySeries(inflation.coreCpi)
@@ -140,9 +148,7 @@ export default function USMacroDashboard() {
   const u6Prv  = prv(employment.u6rate)
 
   const aheYoY     = yoyVal(employment.ahe)
-  const ahePrevYoY = employment.ahe?.length >= 14
-    ? (employment.ahe[employment.ahe.length - 2].value / employment.ahe[employment.ahe.length - 14].value - 1) * 100
-    : null
+  const ahePrevYoY = yoyBefore(employment.ahe, lat(employment.ahe)?.date)
 
   // NFP 12M bar
   const nfp13     = nfp?.length >= 13 ? nfp.slice(-13) : []
@@ -185,7 +191,7 @@ export default function USMacroDashboard() {
     { key: 'edu_health',   label: 'Edu & Health' },
     { key: 'leisure',      label: 'Leisure & Hosp.' },
   ]
-  const wageYoYs  = wageDefs.map(d => yoyVal(wages.bySector[d.key]) ?? 0)
+  const wageYoYs  = wageDefs.map(d => yoyVal(wages.bySector[d.key]) ?? null)
   const wageLabels = wageDefs.map(d => d.label)
 
   // ── Growth ───────────────────────────────────────────────────────────
@@ -493,6 +499,7 @@ export default function USMacroDashboard() {
             {cpiYoY != null && cpiPrevYoY != null
               ? fmtSign(cpiYoY - cpiPrevYoY, 2) + ' vs prior month'
               : ''}
+            {cpiShown.missingBase && <div style={{ color: '#c7cdd1', marginTop: '3px' }}>{gapNote(cpiShown)}</div>}
           </div>
         </div>
         <div style={s.card}>
@@ -502,6 +509,7 @@ export default function USMacroDashboard() {
             {coreCpiYoY != null && corePrevYoY != null
               ? fmtSign(coreCpiYoY - corePrevYoY, 2) + ' vs prior month'
               : ''}
+            {coreCpiShown.missingBase && <div style={{ color: '#c7cdd1', marginTop: '3px' }}>{gapNote(coreCpiShown)}</div>}
           </div>
         </div>
       </div>
@@ -634,7 +642,7 @@ export default function USMacroDashboard() {
               labels: wageLabels,
               datasets: [{
                 data: wageYoYs,
-                backgroundColor: wageYoYs.map(v => v >= 0 ? 'rgba(29,158,117,0.75)' : 'rgba(226,75,74,0.75)'),
+                backgroundColor: wageYoYs.map(v => v == null ? 'transparent' : v >= 0 ? 'rgba(29,158,117,0.75)' : 'rgba(226,75,74,0.75)'),
               }],
             }}
             options={hbarWageOpts}
