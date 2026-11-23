@@ -53,7 +53,8 @@ export async function fetchFredSeries(seriesId, config = {}) {
         api_key: apiKey,
         file_type: 'json',
         sort_order: 'desc',
-        limit: String(limit),
+        // The API counts unpublished (".") rows toward its limit; ask for a few more so monthly series have the same length on both paths.
+        limit: String(limit + 12),
       })
       if (startDate) params.set('observation_start', startDate)
       if (frequency) params.set('frequency', frequency)
@@ -72,6 +73,7 @@ export async function fetchFredSeries(seriesId, config = {}) {
             .map(observation => ({ date: observation.date, value: Number.parseFloat(observation.value) }))
             .filter(point => Number.isFinite(point.value))
             .reverse()
+            .slice(-limit)
         }
       }
     } catch (error) {

@@ -1779,9 +1779,7 @@ button:focus-visible {
 .workspace-pulse__details span,
 .workspace-pulse__details b {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .workspace-pulse__details span {

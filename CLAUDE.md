@@ -83,7 +83,7 @@ principles:
 
 ```yaml
 runtime:
-  framework: "Next.js 14.2.29 App Router"
+  framework: "Next.js 14.2.35 App Router"
   language: "JavaScript / React 18"
   charts: ["Chart.js", "react-chartjs-2", "D3"]
   files: ["xlsx"]

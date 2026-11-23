@@ -153,7 +153,8 @@ export async function GET() {
     fetchSeries('GDPC1', 100, { startDate: '1995-01-01' }),
     fetchSeries('GDPPOT', 100, { startDate: '1995-01-01' }),
     fetchSeries('NROU', 100, { startDate: '1995-01-01' }),
-    fetchSeries('T5YIE', 240, { frequency: 'm', aggregation: 'avg' }),
+    // Official monthly average; averaging the daily series rounds differently by delivery path.
+    fetchSeries('T5YIEM', 240),
     fetchSeries('GS1', 600),
     fetchSeries('PCETRIM12M159SFRBDAL', 600),
   ])
