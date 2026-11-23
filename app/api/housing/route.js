@@ -1,3 +1,5 @@
+import { fetchWithRetry } from '../../lib/resilient-fetch.js'
+
 export const revalidate = 3600
 export const dynamic = 'force-dynamic'
 
@@ -30,11 +32,10 @@ async function fetchSeries(definition) {
     RegionalRank: '2',
     SectionHeaderFlg: '1',
   })
-  const response = await fetch(`${API_BASE}?${params}`, {
+  const response = await fetchWithRetry(`${API_BASE}?${params}`, {
     next: { revalidate },
-    signal: AbortSignal.timeout(15000),
     headers: { 'User-Agent': 'Macro Data Monitor housing dashboard' },
-  })
+  }, { attempts: 2, timeoutMs: 15000 })
   if (!response.ok) throw new Error(`Statistics Dashboard returned HTTP ${response.status}`)
   const payload = await response.json()
   const result = payload?.GET_STATS?.RESULT
