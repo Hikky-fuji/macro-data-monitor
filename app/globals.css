@@ -1732,6 +1732,25 @@ button:focus-visible {
   vector-effect: non-scaling-stroke;
 }
 
+/* A second-panel series has no reference level, so it does not take the card's tone. */
+.workspace-pulse__panel .workspace-pulse__sparkline {
+  color: var(--jp-blue);
+}
+
+.workspace-pulse__method {
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid #3f474c;
+  color: #aeb6bb;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.workspace-pulse__method b {
+  color: #d7dcdf;
+  font-weight: 650;
+}
+
 .workspace-pulse__sparkline.is-empty {
   opacity: .3;
 }

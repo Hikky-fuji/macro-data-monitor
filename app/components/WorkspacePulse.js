@@ -685,6 +685,12 @@ async function fetchJson(path, parentSignal, timeoutMs = 12000) {
   }
 }
 
+// References behind the green / red card colors. Keep in step with the tone() calls above.
+const METHOD_NOTES = {
+  US: 'Color: above or below a reference (inflation 2%, ISM scale 50, unemployment 4.5%, changes and regional indexes 0; higher inflation and unemployment are red). Blue or white: no reference.',
+  JP: 'Color: above or below a reference (inflation 2%, wages and output gap 0; higher inflation is red). White: no reference.',
+}
+
 const PULSE_CACHE_VERSION = 9
 
 function readPulseCache(countryCode, maxAge) {
@@ -916,6 +922,9 @@ export default function WorkspacePulse({ countryCode, title = 'Core indicators Â
           </Link>
         ))}
       </div>
+      <p className="workspace-pulse__method">
+        <b>How to read</b>{' '}{METHOD_NOTES[countryCode]} Arrow: latest vs the average of the prior three; moves under 6% of the range are flat. Descriptive, not a forecast.
+      </p>
     </section>
   )
 }
