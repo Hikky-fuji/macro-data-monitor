@@ -5,6 +5,7 @@ import {
   HEADLINE_BLOCKS,
   INCOME_COMPONENTS,
   PCE_PRICE_ROWS,
+  diningMetrics,
   levelContributions,
   priceRow,
   shareContributions,
@@ -78,4 +79,19 @@ test('share contributions weight price changes by base-period nominal share', ()
   close(result.values.core, 2.25)
   close(result.growth, 2.5)
   close(result.residual, 0)
+})
+
+test('dining changes match calendar months and stay blank across an unpublished CPI month', () => {
+  const sales = monthly('2025-01', Array.from({ length: 22 }, (_, i) => 100 + i))
+  const cpi = monthly('2025-01', Array(22).fill(50)).filter(point => point.date !== '2025-10-01')
+  const result = diningMetrics(sales, cpi)
+  assert.equal(result.date, '2026-10-01')
+  close(result.salesYoy, (121 / 109 - 1) * 100)
+  close(result.real3m, ((121 / 118) ** 4 - 1) * 100)
+  assert.equal(result.realYoy, null)
+  assert.equal(result.priceYoy, null)
+  const [sep, oct] = result.path('real', ['2026-09-01', '2026-10-01'])
+  close(sep, (120 / 108 - 1) * 100)
+  assert.equal(oct, null)
+  assert.equal(diningMetrics([], []).date, null)
 })

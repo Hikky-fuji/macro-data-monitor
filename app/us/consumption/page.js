@@ -19,7 +19,8 @@ import {
 } from 'chart.js'
 import styles from '../analysis-dashboard.module.css'
 import { SERIES_COLORS } from '../../lib/series-colors.mjs'
-import { HEADLINE_BLOCKS, INCOME_COMPONENTS, PCE_PRICE_ROWS, levelContributions, priceRow, shareContributions } from '../../lib/us-pce-metrics.mjs'
+import { addMonths } from '../../lib/us-cpi-scenarios.mjs'
+import { HEADLINE_BLOCKS, INCOME_COMPONENTS, PCE_PRICE_ROWS, diningMetrics, levelContributions, priceRow, shareContributions } from '../../lib/us-pce-metrics.mjs'
 
 ChartJS.register(BarController, BarElement, CategoryScale, Filler, Legend, LinearScale, LineController, LineElement, PointElement, Tooltip)
 
@@ -219,26 +220,15 @@ export default function ConsumptionDashboard() {
     const savingRate = value('savingRate')
     const savingChange = savingRate - value('savingRate', 12)
 
-    const diningMonths = maps.restaurantSales && maps.foodAwayCpi
-      ? [...maps.restaurantSales.keys()]
-          .filter(month => maps.foodAwayCpi.has(month))
-          .sort()
-      : []
-    const diningMonth = diningMonths.at(-1) || null
-    const diningIndex = diningMonth ? diningMonths.length - 1 : -1
-    const diningValue = (key, offset = 0) => maps[key]?.get(diningMonths[diningIndex - offset])
-    const realDiningLevel = offset => {
-      const sales = diningValue('restaurantSales', offset)
-      const prices = diningValue('foodAwayCpi', offset)
-      return valid(sales) && valid(prices) && prices !== 0 ? sales / prices : null
-    }
-    const restaurantSalesMom = change(diningValue('restaurantSales'), diningValue('restaurantSales', 1))
-    const restaurantSalesYoy = change(diningValue('restaurantSales'), diningValue('restaurantSales', 12))
-    const diningPriceYoy = change(diningValue('foodAwayCpi'), diningValue('foodAwayCpi', 12))
-    const realDiningMom = change(realDiningLevel(0), realDiningLevel(1))
-    const realDiningYoy = change(realDiningLevel(0), realDiningLevel(12))
-    const realDining3m = annualizedChange(realDiningLevel(0), realDiningLevel(3), 3)
-    const diningState = !valid(realDiningYoy)
+    const dining = diningMetrics(source.restaurantSales?.observations, source.foodAwayCpi?.observations)
+    const diningMonth = dining.date?.slice(0, 7) || null
+    const restaurantSalesMom = dining.salesMom
+    const restaurantSalesYoy = dining.salesYoy
+    const diningPriceYoy = dining.priceYoy
+    const realDiningMom = dining.realMom
+    const realDiningYoy = dining.realYoy
+    const realDining3m = dining.real3m
+    const diningState = !valid(realDining3m)
       ? { label: 'Source unavailable', tone: 'neutralText' }
       : realDining3m > 2
         ? { label: 'Dining demand accelerating', tone: 'positiveText' }
@@ -273,21 +263,10 @@ export default function ConsumptionDashboard() {
         ? { label: 'Income cushion building', tone: 'positiveText' }
         : { label: 'Income and spending aligned', tone: 'neutralText' }
 
-    const diningChartMonths = diningMonths.slice(-60)
-    const diningMonthIndex = new Map(diningMonths.map((month, index) => [month, index]))
-    const diningGrowth = (kind, periods = 12) => diningChartMonths.map(month => {
-      const index = diningMonthIndex.get(month)
-      if (!Number.isInteger(index) || index < periods) return null
-      if (kind === 'real') {
-        const currentSales = maps.restaurantSales.get(month)
-        const currentPrices = maps.foodAwayCpi.get(month)
-        const previousMonth = diningMonths[index - periods]
-        const previousSales = maps.restaurantSales.get(previousMonth)
-        const previousPrices = maps.foodAwayCpi.get(previousMonth)
-        return change(currentSales / currentPrices, previousSales / previousPrices)
-      }
-      return change(maps[kind].get(month), maps[kind].get(diningMonths[index - periods]))
-    })
+    const diningChartMonths = diningMonth
+      ? Array.from({ length: 60 }, (_, index) => addMonths(dining.date, index - 59))
+      : []
+    const diningGrowth = kind => dining.path(kind, diningChartMonths)
 
     const priceRows = PCE_PRICE_ROWS.map(row => ({ ...row, ...priceRow(source[row.key]?.observations) }))
     const momDates = priceRows[0].mom?.map(point => point.date) || []
@@ -413,11 +392,11 @@ export default function ConsumptionDashboard() {
         ],
       },
       diningChart: diningMonth ? {
-        labels: diningChartMonths.map(month => monthLabel(`${month}-01`)),
+        labels: diningChartMonths.map(monthLabel),
         datasets: [
-          { label: 'Nominal restaurant sales YoY', data: diningGrowth('restaurantSales'), borderColor: SERIES_COLORS.nominalSpending, backgroundColor: 'transparent', tension: .25, pointRadius: 0, borderWidth: 1.8 },
+          { label: 'Nominal restaurant sales YoY', data: diningGrowth('sales'), borderColor: SERIES_COLORS.nominalSpending, backgroundColor: 'transparent', tension: .25, pointRadius: 0, borderWidth: 1.8 },
           { label: 'Approx. real restaurant sales YoY', data: diningGrowth('real'), borderColor: SERIES_COLORS.consumption, backgroundColor: 'transparent', tension: .25, pointRadius: 0, borderWidth: 2.2 },
-          { label: 'Food away from home CPI YoY', data: diningGrowth('foodAwayCpi'), borderColor: SERIES_COLORS.food, backgroundColor: 'transparent', borderDash: [5, 4], tension: .25, pointRadius: 0, borderWidth: 1.7 },
+          { label: 'Food away from home CPI YoY', data: diningGrowth('prices'), borderColor: SERIES_COLORS.food, backgroundColor: 'transparent', borderDash: [5, 4], tension: .25, pointRadius: 0, borderWidth: 1.7 },
         ],
       } : null,
     }
@@ -669,6 +648,11 @@ export default function ConsumptionDashboard() {
           ) : (
             <article className={styles.panel}>Dining feeds are temporarily unavailable; the PCE dashboard remains fully usable.</article>
           )}
+          {model.diningChart && !valid(model.realDiningYoy) ? (
+            <p className={styles.panelNote}>
+              BLS published no October 2025 CPI, so price and real changes that need that month are blank. Changes are matched by calendar month.
+            </p>
+          ) : null}
         </section>
 
         <section className={styles.section}>

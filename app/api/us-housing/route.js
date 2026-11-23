@@ -1,3 +1,5 @@
+import { fetchFredSeries } from '../../lib/fred.js'
+
 export const revalidate = 3600
 export const dynamic = 'force-dynamic'
 
@@ -13,44 +15,16 @@ const SERIES = {
   housePrices: { id: 'USSTHPI', label: 'FHFA All-Transactions House Price Index', unit: 'index, quarterly', optional: true },
 }
 
-function parseCsv(text) {
-  return text.trim().split(/\r?\n/).slice(1).map(row => {
-    const [date, rawValue] = row.split(',')
-    const value = Number(rawValue)
-    return { date, value: rawValue === '.' || !Number.isFinite(value) ? null : value }
-  })
-}
-
 async function fetchSeries(apiKey, definition) {
-  if (!apiKey) {
-    const response = await fetch(
-      `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${definition.id}&cosd=2010-01-01`,
-      { next: { revalidate }, signal: AbortSignal.timeout(12000) },
-    )
-    if (!response.ok) throw new Error(`FRED returned HTTP ${response.status} for ${definition.id}`)
-    return { ...definition, observations: parseCsv(await response.text()) }
-  }
-  const params = new URLSearchParams({
-    series_id: definition.id,
-    api_key: apiKey,
-    file_type: 'json',
-    observation_start: '2010-01-01',
-    sort_order: 'asc',
+  const observations = await fetchFredSeries(definition.id, {
+    apiKey,
+    limit: 2000,
+    startDate: '2010-01-01',
+    revalidate,
+    timeoutMs: 12000,
   })
-  const response = await fetch(
-    `https://api.stlouisfed.org/fred/series/observations?${params}`,
-    { next: { revalidate }, signal: AbortSignal.timeout(12000) },
-  )
-  if (!response.ok) throw new Error(`FRED returned HTTP ${response.status} for ${definition.id}`)
-  const payload = await response.json()
-  if (payload.error_message) throw new Error(`${definition.id}: ${payload.error_message}`)
-  return {
-    ...definition,
-    observations: (payload.observations || []).map(item => ({
-      date: item.date,
-      value: item.value === '.' ? null : Number(item.value),
-    })),
-  }
+  if (!observations.length) throw new Error(`${definition.id}: no observations returned`)
+  return { ...definition, observations }
 }
 
 export async function GET() {

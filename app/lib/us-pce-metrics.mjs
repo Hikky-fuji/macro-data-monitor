@@ -123,3 +123,34 @@ export function shareContributions(blocks = [], aggregatePrice = [], totalNomina
     return { date: point.date, values, growth, residual: finite(growth) && finite(sum) ? growth - sum : null }
   })
 }
+
+// Dining demand: restaurant sales deflated by the food-away-from-home CPI.
+// Changes are matched by calendar month, so an unpublished month (no October
+// 2025 CPI) leaves dependent changes blank instead of shifting the base.
+export function diningMetrics(restaurantSales = [], foodAwayCpi = []) {
+  const sales = observationMap(restaurantSales || [])
+  const prices = observationMap(foodAwayCpi || [])
+  const dates = [...sales.keys()].filter(date => finite(sales.get(date)) && finite(prices.get(date))).sort()
+  const real = new Map(dates.filter(date => prices.get(date) !== 0).map(date => [date, sales.get(date) / prices.get(date)]))
+  const ratio = (map, date, months) => {
+    const current = map.get(date)
+    const base = map.get(addMonths(date, -months))
+    return finite(current) && finite(base) && base !== 0 ? current / base : null
+  }
+  const growth = (map, date, months, power = 1) => {
+    const value = ratio(map, date, months)
+    return value === null ? null : (value ** power - 1) * 100
+  }
+  const maps = { sales, prices, real }
+  const date = dates.at(-1) ?? null
+  return {
+    date,
+    salesMom: date && growth(sales, date, 1),
+    salesYoy: date && growth(sales, date, 12),
+    priceYoy: date && growth(prices, date, 12),
+    realMom: date && growth(real, date, 1),
+    realYoy: date && growth(real, date, 12),
+    real3m: date && growth(real, date, 3, 4),
+    path: (kind, pathDates) => pathDates.map(item => growth(maps[kind], item, 12)),
+  }
+}
