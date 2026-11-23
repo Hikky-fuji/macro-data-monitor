@@ -189,6 +189,11 @@ export default function Consumption() {
         <div style={s.box}>
           <div style={s.boxTitle}>Basic vs Discretionary Spending (Y/Y %)</div>
           <Line data={chart2} options={lineOpts} />
+          {total.some(v => v.date >= basic[0]?.date && !(v.date in basicMap)) ? (
+            <div style={{ fontSize: '11px', marginTop: '8px', opacity: 0.75 }}>
+              Gap: the Statistics Bureau publishes no basic / discretionary split for months shown blank. Values are not interpolated.
+            </div>
+          ) : null}
           <div style={s.note}>※ Basic: food, utilities etc. / Discretionary: travel, leisure etc.</div>
         </div>
       </div>
